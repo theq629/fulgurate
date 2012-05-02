@@ -1,0 +1,49 @@
+#!/usr/bin/env python2
+
+"""
+Print information about flashcard scheduling.
+"""
+
+import cards
+import ttyio
+import collections
+
+if __name__ == "__main__":
+  import datetime
+  import sys
+  import getopt
+  import argopen
+
+  try:
+    opts, args = getopt.getopt(sys.argv[1:], "n:")
+    if len(args) != 1:
+      raise getopt.GetoptError("wrong number of positional arguments")
+  except getopt.GetoptError:
+    print >> sys.stderr, "usage: %s [-n NOW]" % (sys.argv[0])
+    sys.exit(1)
+
+  filename = args[0]
+  with argopen.open(filename) as input:
+    deck = tuple(cards.load(input))
+
+  batch_size = None
+  now = datetime.datetime.now()
+  for opt, arg in opts:
+    if opt == '-n':
+      import dateutil.parser
+      now = dateutil.parser.parse(arg)
+
+  unseen = 0
+  on_day = collections.defaultdict(int)
+  for card in deck:
+    if card.is_new:
+      unseen += 1
+    else:
+      on_day[card.next_time] += 1
+
+  now = now.replace(hour=0, minute=0, second=0, microsecond=0)
+  print "%s %i %i" % (now.strftime(cards.time_fmt), -1, unseen)
+  schedule = [(next_time.strftime(cards.time_fmt), (next_time - now).days, on_day[next_time]) for next_time in on_day]
+  schedule.sort(key=lambda (t, d, n): d)
+  for item in schedule:
+    print "%s %i %i" % item

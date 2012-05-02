@@ -1,0 +1,91 @@
+#!/usr/bin/env python2
+
+"""
+Run flashcards in the terminal.
+"""
+
+import cards
+import ttyio
+
+def show_batch(cards):
+  ttyio.clear()
+  for i, card in enumerate(cards):
+    print "%i: %s\r" % (i + 1, card.top)
+  print "\r"
+
+def execute(command, card):
+  import os
+  import subprocess
+  p = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  cards.save(p.stdin, [card])
+  p.stdin.close()
+  os.waitpid(p.pid, 0)[1]
+
+def review_card(card, clear=True, wait=True, command=None):
+  if clear:
+    ttyio.clear()
+  with ttyio.unbuffered(sys.stdin) as input:
+    print "%s\r" % (card.top)
+    if wait:
+      ttyio.getch()
+    print "%s\r" % (card.bot)
+    if command is not None:
+      execute(command, card)
+    while True:
+      ch = ttyio.getch()
+      if ch == '`':
+        return 0
+      elif ch in "12345":
+        return int(ch)
+
+if __name__ == "__main__":
+  import datetime
+  import sys
+  import getopt
+  import argopen
+
+  try:
+    opts, args = getopt.getopt(sys.argv[1:], "b:n:e:rRN")
+    if len(args) != 1:
+      raise getopt.GetoptError("wrong number of positional arguments")
+  except getopt.GetoptError:
+    print >> sys.stderr, "usage: %s [-R] [-N] [-r] [-b BATCH-SIZE] [-n NOW] [-e EXEC-CMD] CARDS-FILE" % (sys.argv[0])
+    sys.exit(1)
+
+  filename = args[0]
+  with argopen.open(filename) as input:
+    deck = tuple(cards.load(input))
+
+  batch_size = None
+  now = datetime.datetime.now()
+  command = None
+  do_review = True
+  do_new = True
+  randomize = False
+  for opt, arg in opts:
+    if opt == '-b':
+      batch_size = int(arg)
+    elif opt == '-n':
+      import dateutil.parser
+      now = dateutil.parser.parse(arg)
+    elif opt == '-e':
+      command = arg
+    elif opt == '-r':
+      randomize = True
+    elif opt == '-R':
+      do_review = False
+    elif opt == '-N':
+      do_new = False
+
+  try:
+    with ttyio.unbuffered(sys.stdin) as input:
+      now = now.replace(hour=0, minute=0, second=0, microsecond=0)
+      if batch_size is None:
+        cards.run_cards(deck, now, lambda *args: review_card(*args, command=command), do_review=do_review, do_new=do_new, randomize=randomize)
+      else:
+        cards.bulk_review(deck, now, batch_size, show_batch, lambda *args: review_card(*args, clear=False, wait=False, command=command), do_review=do_review, do_new=do_new, randomize=randomize)
+  except KeyboardInterrupt:
+    pass
+  finally:
+    with argopen.open(filename, 'w', atomic=True) as output:
+      cards.save(output, deck)

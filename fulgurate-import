@@ -1,0 +1,42 @@
+#!/usr/bin/env python2
+
+"""
+Convert a two-column TSV file to a flashcard file.
+"""
+
+import cards
+import sys
+
+def load_data(input):
+  for i, line in enumerate(input, 1):
+    if line.startswith('#'):
+      continue
+    parts = line.strip().split('\t')
+    if len(parts) != 2:
+      raise IOError("wrong number of records on line %i" % (i))
+    yield(parts)
+
+if __name__ == "__main__":
+  import datetime
+  import getopt
+  import argopen
+
+  try:
+    opts, args = getopt.getopt(sys.argv[1:], "n:")
+    if len(args) < 1 or len(args) > 2:
+      raise getopt.GetoptError("wrong number of positional arguments")
+  except getopt.GetoptError:
+    print >> sys.stderr, "usage: %s [-n NOW] DATA-FILE [CARDS-FILE]"
+    sys.exit(1)
+
+  now = datetime.datetime.now()
+  for opt, arg in opts:
+    if opt == '-n':
+      import dateutil.parser
+      now = dateutil.parser.parse(arg)
+
+  src = sys.argv[1]
+  dest = sys.argv[2] if len(sys.argv) >= 3 else "-"
+  with argopen.open(src) as input:
+    with argopen.open(dest, 'w') as output:
+      cards.save(output, (cards.card(top, bot, now) for top, bot in load_data(input)))
