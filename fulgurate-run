@@ -13,26 +13,44 @@ def show_batch(cards):
     print "%i: %s\r" % (i + 1, card.top)
   print "\r"
 
-def execute(command, card):
-  import os
-  import subprocess
-  p = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  cards.save(p.stdin, [card])
-  p.stdin.close()
-  os.waitpid(p.pid, 0)[1]
+class external_filter:
+  def __init__(self, command):
+    import subprocess
+    self.proc = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-def review_card(card, clear=True, wait=True, command=None):
+  def send_card(self, card):
+    print >> self.proc.stdin, "%s\t%s\t%s" % (card.filename or "", card.top, card.bot)
+    self.proc.stdin.flush()
+
+  def send_flip(self):
+    print >> self.proc.stdin, ""
+    self.proc.stdin.flush()
+
+  def receive(self):
+    return tuple(p.decode('string_escape') for p in self.proc.stdout.readline().rstrip('\n').split('\t'))
+
+  def close(self):
+    import os
+    self.proc.stdin.close()
+    os.waitpid(self.proc.pid, 0)[1]
+
+def review_card(card, clear=True, wait=True, pre_filter=None, extfilter=None):
   if clear:
     ttyio.clear()
   with ttyio.unbuffered(sys.stdin) as input:
-    if card.filename is not None:
-      print "%s\r" % (card.filename)
-    print "%s\r" % (card.top)
+    if extfilter is None:
+      filename, top, bot = card.filename, card.top, card.bot
+    else:
+      extfilter.send_card(card)
+      filename, top, bot = extfilter.receive()
+    if filename:
+      print "%s\r" % (filename)
+    print "%s\r" % (top)
     if wait:
       ttyio.getch()
-    print "%s\r" % (card.bot)
-    if command is not None:
-      execute(command, card)
+    print "%s\r" % (bot)
+    if extfilter is not None:
+      extfilter.send_flip()
     while True:
       ch = ttyio.getch()
       if ch == '`':
@@ -58,7 +76,7 @@ if __name__ == "__main__":
 
   batch_size = None
   now = datetime.datetime.now()
-  command = None
+  extfilter = None
   max_reviews = None
   max_new = None
   randomize = False
@@ -75,15 +93,15 @@ if __name__ == "__main__":
     elif opt == '-b':
       batch_size = int(arg)
     elif opt == '-e':
-      command = arg
+      extfilter = external_filter(arg)
 
   try:
     with ttyio.unbuffered(sys.stdin) as input:
       now = now.replace(hour=0, minute=0, second=0, microsecond=0)
       if batch_size is None:
-        cards.run_cards(deck, now, lambda *args: review_card(*args, command=command), max_reviews=max_reviews, max_new=max_new, randomize=randomize)
+        cards.run_cards(deck, now, lambda *args: review_card(*args, extfilter=extfilter), max_reviews=max_reviews, max_new=max_new, randomize=randomize)
       else:
-        cards.bulk_review(deck, now, batch_size, show_batch, lambda *args: review_card(*args, clear=False, wait=False, command=command), max_reviews=max_reviews, max_new=max_new, randomize=randomize)
+        cards.bulk_review(deck, now, batch_size, show_batch, lambda *args: review_card(*args, clear=False, wait=False, extfilter=extfilter), max_reviews=max_reviews, max_new=max_new, randomize=randomize)
   except KeyboardInterrupt:
     pass
   finally:

@@ -1,0 +1,4 @@
+IFS="	"
+while read filename top bot; do
+  [ "$top" -a "$bot" ] && echo -e "$filename\t$top\t$(echo "$bot" | tr '/' '|')"
+done
