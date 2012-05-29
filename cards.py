@@ -5,6 +5,7 @@ Flashcard data and operations.
 import datetime
 import math
 import random
+import itertools
 
 time_fmt = "%Y-%m-%d"
 
@@ -76,19 +77,17 @@ def load_all(filenames):
         card.filename = filename
         yield card
 
-def fetch_cards(cards, now, do_review=True, do_new=True, randomize=False):
-  new_cards = list(c for c in cards if c.is_new)
+def fetch_cards(cards, now, max_reviews=None, max_new=None, randomize=False):
+  new_cards = list(itertools.islice((c for c in cards if c.is_new), max_new))
   new_cards.reverse()
-  to_review = list(c for c in cards if not c.is_new and c.next_time <= now)
+  to_review = list(itertools.islice((c for c in cards if not c.is_new and c.next_time <= now), max_reviews))
   to_review.reverse()
   if randomize:
     random.shuffle(to_review)
-  def have_more():
-    return (len(new_cards) > 0 or not do_new) or (len(to_review) > 0 or not do_review)
   def choose_next():
-    if do_review and len(to_review) > 0:
+    if len(to_review) > 0:
       return to_review.pop()
-    elif do_new and len(new_cards) > 0:
+    elif len(new_cards) > 0:
       return new_cards.pop()
     else:
       return None
@@ -97,22 +96,24 @@ def fetch_cards(cards, now, do_review=True, do_new=True, randomize=False):
       new_cards.insert(0, card)
     else:
       to_review.insert(0, card)
-  return have_more, choose_next, reject_card
+  return choose_next, reject_card
 
-def run_cards(cards, now, review_card, do_review=True, do_new=True, randomize=False):
-  have_more, choose_next, reject_card = fetch_cards(cards, now, do_review, do_new, randomize)
+def run_cards(cards, now, review_card, max_reviews=None, max_new=None, randomize=False):
+  choose_next, reject_card = fetch_cards(cards, now, max_reviews, max_new, randomize)
 
-  while have_more():
+  while True:
     current = choose_next()
+    if current is None:
+      break
     quality = review_card(current)
     current.repeat(quality, now)
     if current.is_new:
       reject_card(current)
 
-def bulk_review(cards, now, batch_size, show_batch, review_card, do_review=True, do_new=True, randomize=False):
+def bulk_review(cards, now, batch_size, show_batch, review_card, max_reviews=None, max_new=None, randomize=False):
   import random
 
-  have_more, choose_next, reject_card = fetch_cards(cards, now, do_review, do_new, randomize)
+  choose_next, reject_card = fetch_cards(cards, now, max_reviews, max_new, randomize)
 
   batch = [n for i in range(batch_size) for n in [choose_next()] if n is not None]
   while len(batch) > 0:

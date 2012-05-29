@@ -47,11 +47,11 @@ if __name__ == "__main__":
   import argopen
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "b:n:e:rRN")
+    opts, args = getopt.getopt(sys.argv[1:], "n:R:N:rb:e:")
     if len(args) < 1:
       raise getopt.GetoptError("wrong number of positional arguments")
   except getopt.GetoptError:
-    print >> sys.stderr, "usage: %s [-R] [-N] [-r] [-b BATCH-SIZE] [-n NOW] [-e EXEC-CMD] CARDS-FILE [...]" % (sys.argv[0])
+    print >> sys.stderr, "usage: %s [-n NOW] [-R MAX-REVIEWS] [-N MAX-NEW] [-r] [-b BATCH-SIZE] [-e EXEC-CMD] CARDS-FILE [...]" % (sys.argv[0])
     sys.exit(1)
 
   deck = tuple(cards.load_all(args))
@@ -59,31 +59,31 @@ if __name__ == "__main__":
   batch_size = None
   now = datetime.datetime.now()
   command = None
-  do_review = True
-  do_new = True
+  max_reviews = None
+  max_new = None
   randomize = False
   for opt, arg in opts:
-    if opt == '-b':
-      batch_size = int(arg)
-    elif opt == '-n':
+    if opt == '-n':
       import dateutil.parser
       now = dateutil.parser.parse(arg)
-    elif opt == '-e':
-      command = arg
+    elif opt == '-R':
+      max_reviews = int(arg)
+    elif opt == '-N':
+      max_new = int(arg)
     elif opt == '-r':
       randomize = True
-    elif opt == '-R':
-      do_review = False
-    elif opt == '-N':
-      do_new = False
+    elif opt == '-b':
+      batch_size = int(arg)
+    elif opt == '-e':
+      command = arg
 
   try:
     with ttyio.unbuffered(sys.stdin) as input:
       now = now.replace(hour=0, minute=0, second=0, microsecond=0)
       if batch_size is None:
-        cards.run_cards(deck, now, lambda *args: review_card(*args, command=command), do_review=do_review, do_new=do_new, randomize=randomize)
+        cards.run_cards(deck, now, lambda *args: review_card(*args, command=command), max_reviews=max_reviews, max_new=max_new, randomize=randomize)
       else:
-        cards.bulk_review(deck, now, batch_size, show_batch, lambda *args: review_card(*args, clear=False, wait=False, command=command), do_review=do_review, do_new=do_new, randomize=randomize)
+        cards.bulk_review(deck, now, batch_size, show_batch, lambda *args: review_card(*args, clear=False, wait=False, command=command), max_reviews=max_reviews, max_new=max_new, randomize=randomize)
   except KeyboardInterrupt:
     pass
   finally:
