@@ -16,6 +16,7 @@ class card:
     self.repetitions = repetitions
     self.interval = interval
     self.easiness = easiness
+    self.filename = None # Reserved for use by {load,save}_all
 
   def is_new(self):
     return self.repetitions == 0
@@ -54,6 +55,26 @@ def load(input):
     easiness = float(easiness)
     new = card(top, bot, time, repetitions, interval, easiness)
     yield new
+
+def save_all(cards):
+  import argopen
+  outputs = {}
+  try:
+    for card in cards:
+      if card.filename not in outputs:
+        outputs[card.filename] = argopen.open(card.filename, 'w')
+      save(outputs[card.filename], [card])
+  finally:
+    for output in outputs.values():
+      output.close()
+
+def load_all(filenames):
+  import argopen
+  for filename in filenames:
+    with argopen.open(filename) as input:
+      for card in load(input):
+        card.filename = filename
+        yield card
 
 def fetch_cards(cards, now, do_review=True, do_new=True, randomize=False):
   new_cards = list(c for c in cards if c.is_new)

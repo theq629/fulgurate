@@ -17,6 +17,7 @@ class open:
     self.atomic = atomic
     self.using_std = False
     self.using_temp = False
+    self.file = None
 
   def __enter__(self):
     writing = 'w' in self.mode
@@ -36,7 +37,16 @@ class open:
     return self.file
 
   def __exit__(self, type, value, traceback):
-    if not self.using_std:
-      self.file.close()
-    if self.using_temp:
-      shutil.move(self.file.name, self.filename)
+    self.close()
+
+  def close(self):
+    if self.file is not None:
+      if not self.using_std:
+        self.file.close()
+      if self.using_temp:
+        shutil.move(self.file.name, self.filename)
+
+  def write(self, string):
+    if self.file is None:
+      self.__enter__()
+    self.file.write(string)

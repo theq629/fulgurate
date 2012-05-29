@@ -25,6 +25,8 @@ def review_card(card, clear=True, wait=True, command=None):
   if clear:
     ttyio.clear()
   with ttyio.unbuffered(sys.stdin) as input:
+    if card.filename is not None:
+      print "%s\r" % (card.filename)
     print "%s\r" % (card.top)
     if wait:
       ttyio.getch()
@@ -46,15 +48,13 @@ if __name__ == "__main__":
 
   try:
     opts, args = getopt.getopt(sys.argv[1:], "b:n:e:rRN")
-    if len(args) != 1:
+    if len(args) < 1:
       raise getopt.GetoptError("wrong number of positional arguments")
   except getopt.GetoptError:
-    print >> sys.stderr, "usage: %s [-R] [-N] [-r] [-b BATCH-SIZE] [-n NOW] [-e EXEC-CMD] CARDS-FILE" % (sys.argv[0])
+    print >> sys.stderr, "usage: %s [-R] [-N] [-r] [-b BATCH-SIZE] [-n NOW] [-e EXEC-CMD] CARDS-FILE [...]" % (sys.argv[0])
     sys.exit(1)
 
-  filename = args[0]
-  with argopen.open(filename) as input:
-    deck = tuple(cards.load(input))
+  deck = tuple(cards.load_all(args))
 
   batch_size = None
   now = datetime.datetime.now()
@@ -87,5 +87,4 @@ if __name__ == "__main__":
   except KeyboardInterrupt:
     pass
   finally:
-    with argopen.open(filename, 'w', atomic=True) as output:
-      cards.save(output, deck)
+    cards.save_all(deck)
