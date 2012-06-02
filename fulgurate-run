@@ -36,8 +36,11 @@ OPTIONS
 *-b* 'NUM'
   Enable batch mode and set the number of cards in one batch.
 
-*-e* 'CMD'
-  Set a command to filter cards.
+*-f* 'CMD'
+  Set a command to filter cards. It should take on stdin a sequence of card data lines consisting of filename, first field, and second field, separated by tabs. It should output to stdout new card data in the same format, which will be shown instead of the original card data.
+
+*-F* 'CMD'
+  Set a command to execute after a card's second field is shown. It should take cards on stdin in the same format as the command for -f. Its output is ignored.
 """
 
 import cards
@@ -58,10 +61,6 @@ class external_filter:
     print >> self.proc.stdin, "%s\t%s\t%s" % (card.filename or "", card.top, card.bot)
     self.proc.stdin.flush()
 
-  def send_flip(self):
-    print >> self.proc.stdin, ""
-    self.proc.stdin.flush()
-
   def receive(self):
     return tuple(p.decode('string_escape') for p in self.proc.stdout.readline().rstrip('\n').split('\t'))
 
@@ -70,23 +69,23 @@ class external_filter:
     self.proc.stdin.close()
     os.waitpid(self.proc.pid, 0)[1]
 
-def review_card(card, clear=True, wait=True, pre_filter=None, extfilter=None):
+def review_card(card, clear=True, wait=True, pre_filter=None, ext_filter=None, ext_finish=None):
   if clear:
     ttyio.clear()
   with ttyio.unbuffered(sys.stdin) as input:
-    if extfilter is None:
+    if ext_filter is None:
       filename, top, bot = card.filename, card.top, card.bot
     else:
-      extfilter.send_card(card)
-      filename, top, bot = extfilter.receive()
+      ext_filter.send_card(card)
+      filename, top, bot = ext_filter.receive()
     if filename:
       print "%s\r" % (filename)
     print "%s\r" % (top)
     if wait:
       ttyio.getch()
     print "%s\r" % (bot)
-    if extfilter is not None:
-      extfilter.send_flip()
+    if ext_finish is not None:
+      ext_finish.send_card(card)
     while True:
       ch = ttyio.getch()
       if ch == '`':
@@ -101,21 +100,22 @@ if __name__ == "__main__":
   import argopen
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "n:R:N:rb:e:")
+    opts, args = getopt.getopt(sys.argv[1:], "n:R:N:rb:f:F:")
     if len(args) < 1:
       raise getopt.GetoptError("wrong number of positional arguments")
   except getopt.GetoptError:
-    print >> sys.stderr, "usage: %s [-n TIME] [-R NUM] [-N NUM] [-r] [-b NUM] [-e CMD] CARDS-FILE [...]" % (sys.argv[0])
+    print >> sys.stderr, "usage: %s [-n TIME] [-R NUM] [-N NUM] [-r] [-b NUM] [-f CMD] [-F CMD] CARDS-FILE [...]" % (sys.argv[0])
     sys.exit(1)
 
   deck = tuple(cards.load_all(args))
 
-  batch_size = None
   now = datetime.datetime.now()
-  extfilter = None
   max_reviews = None
   max_new = None
   randomize = False
+  batch_size = None
+  ext_filter = None
+  ext_finish = None
   for opt, arg in opts:
     if opt == '-n':
       import dateutil.parser
@@ -128,16 +128,18 @@ if __name__ == "__main__":
       randomize = True
     elif opt == '-b':
       batch_size = int(arg)
-    elif opt == '-e':
-      extfilter = external_filter(arg)
+    elif opt == '-f':
+      ext_filter = external_filter(arg)
+    elif opt == '-F':
+      ext_finish = external_filter(arg)
 
   try:
     with ttyio.unbuffered(sys.stdin) as input:
       now = now.replace(hour=0, minute=0, second=0, microsecond=0)
       if batch_size is None:
-        cards.run_cards(deck, now, lambda *args: review_card(*args, extfilter=extfilter), max_reviews=max_reviews, max_new=max_new, randomize=randomize)
+        cards.run_cards(deck, now, lambda *args: review_card(*args, ext_filter=ext_filter, ext_finish=ext_finish), max_reviews=max_reviews, max_new=max_new, randomize=randomize)
       else:
-        cards.bulk_review(deck, now, batch_size, show_batch, lambda *args: review_card(*args, clear=False, wait=False, extfilter=extfilter), max_reviews=max_reviews, max_new=max_new, randomize=randomize)
+        cards.bulk_review(deck, now, batch_size, show_batch, lambda *args: review_card(*args, clear=False, wait=False, ext_filter=ext_filter, ext_finish=ext_finish), max_reviews=max_reviews, max_new=max_new, randomize=randomize)
   except KeyboardInterrupt:
     pass
   finally:

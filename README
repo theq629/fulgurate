@@ -16,4 +16,4 @@ An example of common usage is as follows:
   fulgurate-run example.cards # Run the flashcards in the terminal
   fulgurate-show-schedule example.cards # Show the current scheduling for the cards
 
-The included example.tsv file is sample card data consisting of a few Chinese-English dictionary entries from CC-CEDICT.
+The included example.tsv file is sample card data consisting of a few Chinese-English dictionary entries from CC-CEDICT. The files example-filter.sh and example-finish.sh are for fulgurate-run's -f and -F options respectively, and are designed to work with the same data.
