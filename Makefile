@@ -27,8 +27,8 @@ install: man
 	mkdir -p $(LIBPREFIX)
 	cp -f *.py $(PROGS) $(LIBPREFIX)
 	chmod ug+x $(addprefix $(LIBPREFIX)/, $(PROGS))
-	mkdir -p $(MANPREFIX)
-	cp -f $(MANPAGES) $(MANPREFIX)
+	mkdir -p $(MANPREFIX)/man1
+	cp -f $(MANPAGES) $(MANPREFIX)/man1
 	mkdir -p $(BINPREFIX)
 	for bin in $(PROGS); do ln -f -s $(LIBPREFIX)/$$bin $(BINPREFIX)/$$bin; done
 	mkdir -p $(DOCPREFIX)
