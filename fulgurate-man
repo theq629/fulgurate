@@ -1,0 +1,18 @@
+#!/bin/sh
+
+cat <<END
+FULGURATE(1)
+============
+
+NAME
+----
+fulgurate - simple spaced repetition flashcard software 
+
+END
+cat README | awk 'BEGIN { eg=0 } /^  / { if (!eg) { print "----" }; print; eg=1 } ! /^  / { if (eg) { print "----" }; print; eg=false } END { if (eg) { print "----" } }'
+cat <<END
+
+SEE ALSO
+--------
+'fulgurate-import(1)', 'fulgurate-run(1)', 'fulgurate-show-schedule(1)'
+END
