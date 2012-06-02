@@ -1,3 +1,7 @@
+PREFIX?=/usr
+BINPREFIX?=$(PREFIX)/bin
+LIBPREFIX?=$(PREFIX)/lib/fulgurate
+MANPREFIX?=$(PREFIX)/man
 PYTHON?=python2
 A2X?=a2x
 
@@ -16,6 +20,15 @@ fulgurate.1: fulgurate-man README
 	$(A2X) -f manpage -L $(MANTEMPNAME).txt
 
 man: $(MANPAGES)
+
+install: man
+	mkdir -p $(LIBPREFIX)
+	cp -f *.py $(PROGS) $(LIBPREFIX)
+	chmod ug+x $(addprefix $(LIBPREFIX)/, $(PROGS))
+	mkdir -p $(MANPREFIX)
+	cp -f $(MANPAGES) $(MANPREFIX)
+	mkdir -p $(BINPREFIX)
+	for bin in $(PROGS); do ln -s $(LIBPREFIX)/$$bin $(BINPREFIX)/$$bin; done
 
 clean:
 	rm -rf *.pyc $(MANTEMPNAME).py $(MANTEMPNAME).txt $(MANPAGES)
