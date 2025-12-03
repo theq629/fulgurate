@@ -26,6 +26,16 @@ class Card(Generic[S]):
     Flash card.
     """
 
+    __slots__ = (
+        '_top',
+        '_bottom',
+        '_last_repeat_time',
+        '_repetitions',
+        '_interval',
+        '_easiness',
+        '_source',
+    )
+
     @overload
     def __init__(
         self: "Card[None]",
