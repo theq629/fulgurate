@@ -3,6 +3,7 @@ Flashcard data and core operations.
 """
 
 from typing import TypeVar, Optional, Generic, overload, cast
+from enum import IntEnum
 import datetime
 import math
 
@@ -11,6 +12,14 @@ S = TypeVar('S')
 _DEFAULT_REPETITIONS = 0
 _DEFAULT_INTERVAL = 1
 _DEFAULT_EASINESS = 2.5
+
+class RepetitionQuality(IntEnum):
+    ZERO = 0
+    ONE = 1
+    TWO = 2
+    THREE = 3
+    FOUR = 4
+    FIVE = 5
 
 class Card(Generic[S]):
     """
@@ -105,7 +114,7 @@ class Card(Generic[S]):
         """
         return self._last_repeat_time + datetime.timedelta(days=math.ceil(self._interval))
 
-    def repeat(self, quality: int, now: datetime.datetime) -> None:
+    def repeat(self, quality: RepetitionQuality, now: datetime.datetime) -> None:
         """
         Do a repeatition of this card using SM-2.
         """

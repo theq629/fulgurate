@@ -19,7 +19,7 @@ import os
 import subprocess
 import datetime
 import argparse
-from .._card import Card
+from .._card import Card, RepetitionQuality
 from .. import files, review
 from . import _ttyio, _args
 
@@ -82,7 +82,7 @@ def _review_card(
     wait: bool = True,
     ext_filter: Optional[_ExternalFilter] = None,
     ext_finish: Optional[_ExternalFilter] = None,
-) -> int:
+) -> RepetitionQuality:
     if clear:
         _ttyio.clear()
     with _ttyio.Unbuffered(sys.stdin):
@@ -102,9 +102,9 @@ def _review_card(
         while True:
             in_char = _ttyio.getch()
             if in_char in ('0', '`'):
-                return 0
+                return RepetitionQuality(0)
             if in_char in "12345":
-                return int(in_char)
+                return RepetitionQuality(int(in_char))
 
 def _review_deck(
     deck: Iterable[Card[Path]],

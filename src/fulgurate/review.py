@@ -6,7 +6,7 @@ from typing import TypeVar, Callable, Optional, Iterable, Generic
 import random
 import datetime
 import itertools
-from ._card import Card
+from ._card import Card, RepetitionQuality
 
 __all__ = (
     'ReviewCard',
@@ -17,7 +17,7 @@ __all__ = (
 
 S = TypeVar('S')
 
-ReviewCard = Callable[[Card[S]], int]
+ReviewCard = Callable[[Card[S]], RepetitionQuality]
 
 class CardFetcher(Generic[S]):
     def __init__(
