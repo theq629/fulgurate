@@ -43,15 +43,15 @@ def _minimal_real_call(args, key_inputs=()):
     return review_card_mock, external_filter_mock
 
 def _assert_review_cards_called_once_with(mock, *, cards=ANY, now=ANY, review_card=ANY,
-                                          max_reviews=ANY, max_new=ANY, randomize=ANY):
-    mock.assert_called_once_with(cards, now, review_card, max_reviews=max_reviews, max_new=max_new,
+                                          max_old=ANY, max_new=ANY, randomize=ANY):
+    mock.assert_called_once_with(cards, now, review_card, max_old=max_old, max_new=max_new,
                                  randomize=randomize)
 
 def _assert_batch_review_called_once_with(mock, *, cards=ANY, now=ANY, batch_size=ANY,
-                                          show_batch=ANY, review_card=ANY, max_reviews=ANY,
+                                          show_batch=ANY, review_card=ANY, max_old=ANY,
                                           max_new=ANY, randomize=ANY, randomize_batch=ANY):
     mock.assert_called_once_with(cards, now, batch_size=batch_size, show_batch=show_batch,
-                                 review_card=review_card, max_reviews=max_reviews, max_new=max_new,
+                                 review_card=review_card, max_old=max_old, max_new=max_new,
                                  randomize=randomize, randomize_batch=randomize_batch)
 
 def _assert_review_card_called_with(mock, card=ANY, ext_filter=ANY, ext_finish=ANY):
@@ -96,8 +96,8 @@ def test_review_set_time(test_cards_path):
     _assert_review_cards_called_once_with(review_cards_mock, now=set_time)
 
 def test_review_set_max_reviews(test_cards_path):
-    review_cards_mock = _minimal_call(["-R", "12", str(test_cards_path)])
-    _assert_review_cards_called_once_with(review_cards_mock, max_reviews=12)
+    review_cards_mock = _minimal_call(["-O", "12", str(test_cards_path)])
+    _assert_review_cards_called_once_with(review_cards_mock, max_old=12)
 
 def test_review_set_max_new(test_cards_path):
     review_cards_mock = _minimal_call(["-N", "34", str(test_cards_path)])

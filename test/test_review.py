@@ -71,12 +71,12 @@ def test_review_cards_max_reviews():
     got_reviews, make_review_card = _make_review_tracker()
 
     del got_reviews[:]
-    review_cards(deck, _time + _day, make_review_card(4, 5), max_reviews=0)
+    review_cards(deck, _time + _day, make_review_card(4, 5), max_old=0)
     assert len(got_reviews) == 0
     assert [c.repetitions for c in deck] == [1, 1, 2]
 
     del got_reviews[:]
-    review_cards(deck, _time + _day, make_review_card(4, 5), max_reviews=1)
+    review_cards(deck, _time + _day, make_review_card(4, 5), max_old=1)
     assert len(got_reviews) == 1
     assert [c.repetitions for c in deck] == [2, 1, 2]
 
@@ -240,7 +240,7 @@ def test_batch_review_max_reviews():
         batch_size=2,
         show_batch=show_batch,
         review_card=make_review_card(4, 5),
-        max_reviews=0,
+        max_old=0,
     )
     assert len(got_reviews) == 0
     assert [c.repetitions for c in deck] == [1, 1, 2]
@@ -252,7 +252,7 @@ def test_batch_review_max_reviews():
         batch_size=2,
         show_batch=show_batch,
         review_card=make_review_card(4, 5),
-        max_reviews=1,
+        max_old=1,
     )
     assert len(got_reviews) == 1
     assert [c.repetitions for c in deck] == [2, 1, 2]

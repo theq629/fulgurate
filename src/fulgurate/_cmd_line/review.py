@@ -110,7 +110,7 @@ def _review_deck(
     deck: Iterable[Card[Path]],
     *,
     now: datetime.datetime,
-    max_reviews: int,
+    max_old: int,
     max_new: int,
     randomize: bool,
     batch_size: Optional[int],
@@ -129,7 +129,7 @@ def _review_deck(
                         ext_filter=ext_filter,
                         ext_finish=ext_finish
                     ),
-                    max_reviews=max_reviews,
+                    max_old=max_old,
                     max_new=max_new,
                     randomize=randomize,
                 )
@@ -146,7 +146,7 @@ def _review_deck(
                         ext_filter=ext_filter,
                         ext_finish=ext_finish
                     ),
-                    max_reviews=max_reviews,
+                    max_old=max_old,
                     max_new=max_new,
                     randomize=randomize,
                     randomize_batch=True,
@@ -168,18 +168,18 @@ def make_arg_parser() -> argparse.ArgumentParser:
     )
     _args.add_now(arg_parser)
     arg_parser.add_argument(
-        '-R',
-        '--max-to-review',
-        dest='max_reviews',
+        '-O',
+        '--max-to-old',
+        dest='max_old',
         type=int,
-        help="The maximum number of cards to review.",
+        help="The maximum number of old cards to review.",
     )
     arg_parser.add_argument(
         '-N',
         '--max-new',
         dest='max_new',
         type=int,
-        help="The maximum number of new cards.",
+        help="The maximum number of new cards to review.",
     )
     arg_parser.add_argument(
         '-r',
@@ -233,7 +233,7 @@ def main() -> None:
     _review_deck(
         deck=tuple(files.load_path_sourced(args.input_paths)),
         now=args.now,
-        max_reviews=args.max_reviews,
+        max_old=args.max_old,
         max_new=args.max_new,
         randomize=args.randomize,
         batch_size=args.batch_size,
