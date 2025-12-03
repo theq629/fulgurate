@@ -24,8 +24,8 @@ __all__ = (
     'read_cards',
     'save',
     'load',
-    'save_all',
-    'load_all',
+    'save_path_sourced',
+    'save_path_sourced',
 )
 
 _TIME_FMT = "%Y-%m-%d"
@@ -130,7 +130,7 @@ def load(
     reader = make_reader(in_file)
     yield from read_cards(reader, source=source)
 
-def save_all(
+def save_path_sourced(
     cards: Iterable[Card[Path]],
     *,
     make_writer: Optional[MakeWriter] = None,
@@ -149,7 +149,7 @@ def save_all(
                 outputs[card.source] = file_stack.enter_context(out_file)
             save([card], outputs[card.source], make_writer=make_writer)
 
-def load_all(
+def load_path_sourced(
     paths: Iterable[Union[Path, str]],
     *,
     make_reader: Optional[MakeReader] = None,

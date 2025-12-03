@@ -154,7 +154,7 @@ def _review_deck(
     except KeyboardInterrupt:
         pass
     finally:
-        files.save_all(deck)
+        files.save_path_sourced(deck)
 
 def make_arg_parser() -> argparse.ArgumentParser:
     arg_parser = argparse.ArgumentParser(description=__doc__.strip())
@@ -231,7 +231,7 @@ def main() -> None:
     args = make_arg_parser().parse_args()
 
     _review_deck(
-        deck=tuple(files.load_all(args.input_paths)),
+        deck=tuple(files.load_path_sourced(args.input_paths)),
         now=args.now,
         max_reviews=args.max_reviews,
         max_new=args.max_new,
