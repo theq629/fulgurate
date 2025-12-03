@@ -203,10 +203,9 @@ def make_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="""
             Set a command to filter cards. It should take on stdin a sequence
-            of card data lines consisting of path, first field, and second
-            field, separated by tabs. It should output to stdout new card data
-            in the same format, which will be shown instead of the original
-            card data.
+            of card data lines consisting of path, card top, and card bottom,
+            separated by tabs. It should output to stdout new card data in the
+            same format, which will be shown instead of the original card data.
         """
     )
     arg_parser.add_argument(
