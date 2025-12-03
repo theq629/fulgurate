@@ -1,9 +1,9 @@
 #!/usr/bin/env python2
 
 """
-Runs one or more sets of flashcards interactively at the terminal. Cards can be
-presented individually (the default) or in batches where several cards will be
-presented before user feedback is required.
+Reviews one or more sets of flashcards interactively at the terminal. Cards can
+be presented individually (the default) or in batches where several cards will
+be presented before user feedback is required.
 
 The interaction for each card is as follows. The program first shows the first
 (top) part of the card. Press any key after deciding on an answer. The program
@@ -20,7 +20,7 @@ import subprocess
 import datetime
 import argparse
 from .._card import Card
-from .. import files, run
+from .. import files, review
 from . import _ttyio, _args
 
 def _show_batch(cards: Iterable[Card[Path]]) -> None:
@@ -121,7 +121,7 @@ def _review_deck(
         with _ttyio.Unbuffered(sys.stdin):
             now = now.replace(hour=0, minute=0, second=0, microsecond=0)
             if batch_size is None:
-                run.run_cards(
+                review.review_cards(
                     deck,
                     now,
                     lambda *args: _review_card(
@@ -134,7 +134,7 @@ def _review_deck(
                     randomize=randomize,
                 )
             else:
-                run.bulk_review(
+                review.review_cards_batched(
                     deck,
                     now,
                     batch_size=batch_size,

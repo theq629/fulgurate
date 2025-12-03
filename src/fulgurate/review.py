@@ -11,8 +11,8 @@ from ._card import Card
 __all__ = (
     'ReviewCard',
     'CardFetcher',
-    'run_cards',
-    'bulk_review',
+    'review_cards',
+    'review_cards_batched',
 )
 
 S = TypeVar('S')
@@ -59,14 +59,14 @@ class CardFetcher(Generic[S]):
 
     def reject_card(self, card: Card[S]) -> None:
         """
-        Reject card, putting it back for further practice in this run.
+        Reject card, putting it back for further practice in this review sesion.
         """
         if card.is_new:
             self._new_cards.insert(0, card)
         else:
             self._to_review.insert(0, card)
 
-def run_cards(
+def review_cards(
     cards: Iterable[Card[S]],
     now: datetime.datetime,
     review_card: ReviewCard[S],
@@ -100,7 +100,7 @@ def run_cards(
         if current.is_new:
             fetcher.reject_card(current)
 
-def bulk_review(
+def review_cards_batched(
     cards: Iterable[Card[S]],
     now: datetime.datetime,
     *,

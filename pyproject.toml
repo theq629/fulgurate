@@ -44,7 +44,7 @@ Repository = "https://github.com/theq629/fulgurate"
 Documentation = "https://fulgurate.readthedocs.io/"
 
 [project.scripts]
-fulgurate-run = "fulgurate._cmd_line.run:main"
+fulgurate-review = "fulgurate._cmd_line.review:main"
 fulgurate-import-cards = "fulgurate._cmd_line.import_cards:main"
 fulgurate-show-schedule = "fulgurate._cmd_line.show_schedule:main"
 
