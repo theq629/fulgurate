@@ -13,6 +13,7 @@ the answer. 0 through 2 are failure responses and 3 through 5 are success.
 """
 
 from typing import Optional, Iterable, NamedTuple
+from pathlib import Path
 import sys
 import os
 import subprocess
@@ -22,7 +23,7 @@ from .._card import Card
 from .. import files, run
 from . import _ttyio, _args
 
-def _show_batch(cards: Iterable[Card]) -> None:
+def _show_batch(cards: Iterable[Card[Path]]) -> None:
     _ttyio.clear()
     for i, card in enumerate(cards):
         print(f"{i + 1}: {card.top}\r")
@@ -48,12 +49,12 @@ class _ExternalFilter:
             stderr=subprocess.PIPE,
         )
 
-    def send_card(self, card: Card) -> None:
+    def send_card(self, card: Card[Path]) -> None:
         """
         Send a card to the external filter program.
         """
         assert self._proc.stdin is not None
-        print(f"{str(card.path) or ''}\t{card.top}\t{card.bottom}", file=self._proc.stdin)
+        print(f"{str(card.source) or ''}\t{card.top}\t{card.bottom}", file=self._proc.stdin)
         self._proc.stdin.flush()
 
     def receive(self) -> _ExternalFilterRow:
@@ -75,7 +76,7 @@ class _ExternalFilter:
         os.waitpid(self._proc.pid, 0)
 
 def _review_card(
-    card: Card,
+    card: Card[Path],
     *,
     clear: bool = True,
     wait: bool = True,
@@ -86,12 +87,12 @@ def _review_card(
         _ttyio.clear()
     with _ttyio.Unbuffered(sys.stdin):
         if ext_filter is None:
-            path, top, bottom = str(card.path), card.top, card.bottom
+            source, top, bottom = str(card.source), card.top, card.bottom
         else:
             ext_filter.send_card(card)
-            path, top, bottom = ext_filter.receive()
-        if path:
-            print(f"{path}\r")
+            source, top, bottom = ext_filter.receive()
+        if source:
+            print(f"{source}\r")
         print(f"{top}\r")
         if wait:
             _ttyio.getch()
@@ -106,7 +107,7 @@ def _review_card(
                 return int(in_char)
 
 def _review_deck(
-    deck: Iterable[Card],
+    deck: Iterable[Card[Path]],
     *,
     now: datetime.datetime,
     max_reviews: int,

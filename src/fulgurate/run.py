@@ -2,7 +2,7 @@
 Management of practice cycle for cards.
 """
 
-from typing import Callable, Optional, Iterable
+from typing import TypeVar, Callable, Optional, Iterable, Generic
 import random
 import datetime
 import itertools
@@ -15,12 +15,14 @@ __all__ = (
     'bulk_review',
 )
 
-ReviewCard = Callable[[Card], int]
+S = TypeVar('S')
 
-class CardFetcher:
+ReviewCard = Callable[[Card[S]], int]
+
+class CardFetcher(Generic[S]):
     def __init__(
         self,
-        cards: Iterable[Card],
+        cards: Iterable[Card[S]],
         now: datetime.datetime,
         *,
         max_reviews: Optional[int] = None,
@@ -45,7 +47,7 @@ class CardFetcher:
         if randomize:
             random.shuffle(self._to_review)
 
-    def choose_next(self) -> Optional[Card]:
+    def choose_next(self) -> Optional[Card[S]]:
         """
         Get the next card to review, or `None` if there are none left to review.
         """
@@ -55,7 +57,7 @@ class CardFetcher:
             return self._new_cards.pop()
         return None
 
-    def reject_card(self, card: Card) -> None:
+    def reject_card(self, card: Card[S]) -> None:
         """
         Reject card, putting it back for further practice in this run.
         """
@@ -65,9 +67,9 @@ class CardFetcher:
             self._to_review.insert(0, card)
 
 def run_cards(
-    cards: Iterable[Card],
+    cards: Iterable[Card[S]],
     now: datetime.datetime,
-    review_card: ReviewCard,
+    review_card: ReviewCard[S],
     *,
     max_reviews: Optional[int] = None,
     max_new: Optional[int] = None,
@@ -99,12 +101,12 @@ def run_cards(
             fetcher.reject_card(current)
 
 def bulk_review(
-    cards: Iterable[Card],
+    cards: Iterable[Card[S]],
     now: datetime.datetime,
     *,
-    review_card: ReviewCard,
+    review_card: ReviewCard[S],
     batch_size: int,
-    show_batch: Callable[[Iterable[Card]], None],
+    show_batch: Callable[[Iterable[Card[S]]], None],
     max_reviews: Optional[int] = None,
     max_new: Optional[int] = None,
     randomize: bool = False,
@@ -134,7 +136,7 @@ def bulk_review(
         randomize=randomize,
     )
 
-    def run_card(card: Card) -> int:
+    def run_card(card: Card[S]) -> int:
         quality = review_card(card)
         card.repeat(quality, now)
         return quality

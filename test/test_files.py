@@ -80,9 +80,9 @@ def test_save_all_load_all(tmpdir):
         Card(top="e", bottom="f", last_repeat_time=_time, repetitions=2, interval=6.0,
              easiness=2.22),
     ]
-    input_deck[0].path = Path(cards_path0)
-    input_deck[1].path = Path(cards_path1)
-    input_deck[2].path = Path(cards_path0)
+    input_deck[0]._source = Path(cards_path0)
+    input_deck[1]._source = Path(cards_path1)
+    input_deck[2]._source = Path(cards_path0)
 
     files.save_all(input_deck)
     output_deck = list(files.load_all([cards_path0, cards_path1]))

@@ -2,7 +2,7 @@
 Cards file IO.
 """
 
-from typing import Callable, Union, Optional, Iterable, TextIO
+from typing import TypeVar, Any, Callable, Union, Optional, Iterable, TextIO, overload
 from pathlib import Path
 import sys
 import datetime
@@ -39,6 +39,8 @@ _FIELD_NAMES = (
     'bottom',
 )
 
+S = TypeVar('S')
+
 def _make_default_writer(out_file: TextIO) -> DictWriter:
     return csv.DictWriter(out_file, fieldnames=_FIELD_NAMES, dialect=_CSV_DIALECT)
 
@@ -48,7 +50,7 @@ def _make_default_reader(in_file: TextIO) -> DictReader:
 MakeWriter = Callable[[TextIO], DictWriter]
 MakeReader = Callable[[TextIO], DictReader]
 
-def write_cards(cards: Iterable[Card], writer: DictWriter) -> None:
+def write_cards(cards: Iterable[Card[S]], writer: DictWriter) -> None:
     """
     Write cards to a `csv.DictWriter`.
     """
@@ -62,7 +64,13 @@ def write_cards(cards: Iterable[Card], writer: DictWriter) -> None:
             'easiness': card.easiness,
         })
 
-def read_cards(reader: DictReader) -> Iterable[Card]:
+@overload
+def read_cards(reader: DictReader) -> Iterable[Card[None]]: ...
+
+@overload
+def read_cards(reader: DictReader, *, source: S) -> Iterable[Card[S]]: ...
+
+def read_cards(reader: DictReader, *, source: Optional[S] = None) -> Iterable[Card[Any]]:
     """
     Read cards from a `csv.DictReader`.
     """
@@ -70,6 +78,7 @@ def read_cards(reader: DictReader) -> Iterable[Card]:
         yield Card(
             top=row['top'],
             bottom=row['bottom'],
+            source=source,
             last_repeat_time=datetime.datetime.strptime(row['last repeat time'], _TIME_FMT),
             repetitions=int(row['repetitions']),
             interval=float(row['interval']),
@@ -77,7 +86,7 @@ def read_cards(reader: DictReader) -> Iterable[Card]:
         )
 
 def save(
-    cards: Iterable[Card],
+    cards: Iterable[Card[S]],
     out_file: TextIO,
     *,
     make_writer: Optional[MakeWriter] = None,
@@ -90,46 +99,67 @@ def save(
     writer = make_writer(out_file)
     write_cards(cards, writer)
 
-def load(in_file: TextIO, *, make_reader: Optional[MakeReader] = None) -> Iterable[Card]:
+@overload
+def load(
+    in_file: TextIO,
+    *,
+    make_reader: Optional[MakeReader] = None,
+) -> Iterable[Card[None]]:
+    ...
+
+@overload
+def load(
+    in_file: TextIO,
+    *,
+    source: S,
+    make_reader: Optional[MakeReader] = None,
+) -> Iterable[Card[S]]:
+    ...
+
+def load(
+    in_file: TextIO,
+    *,
+    source: Optional[S] = None,
+    make_reader: Optional[MakeReader] = None,
+) -> Iterable[Card[Any]]:
     """
     Load cards from a file.
     """
     if make_reader is None:
         make_reader = _make_default_reader
     reader = make_reader(in_file)
-    yield from read_cards(reader)
+    yield from read_cards(reader, source=source)
 
 def save_all(
-    cards: Iterable[Card],
+    cards: Iterable[Card[Path]],
     *,
     make_writer: Optional[MakeWriter] = None,
     encoding: str = 'utf-8'
 ) -> None:
     """
-    Given cards with the path field set, save them to their respectively files.
+    Given cards with the source field being a path, save them to their
+    respective files.
     """
     outputs = {}
     with ExitStack() as file_stack:
         for card in cards:
-            if card.path is not None:
-                if card.path not in outputs:
-                    # pylint: disable=consider-using-with
-                    out_file = open(card.path, 'w', newline='', encoding=encoding)
-                    outputs[card.path] = file_stack.enter_context(out_file)
-                save([card], outputs[card.path], make_writer=make_writer)
+            if card.source not in outputs:
+                # pylint: disable=consider-using-with
+                out_file = open(card.source, 'w', newline='', encoding=encoding)
+                outputs[card.source] = file_stack.enter_context(out_file)
+            save([card], outputs[card.source], make_writer=make_writer)
 
 def load_all(
     paths: Iterable[Union[Path, str]],
     *,
     make_reader: Optional[MakeReader] = None,
     encoding: str = 'utf-8',
-) -> Iterable[Card]:
+) -> Iterable[Card[Path]]:
     """
-    Load cards from multiple files, with the path field set.
+    Load cards from multiple files, setting the source field for each card to
+    be the path of the file it came from.
     """
     for path in paths:
         path = Path(path)
         with open(path, newline='', encoding=encoding) as in_file:
-            for card in load(in_file, make_reader=make_reader):
-                card.path = path
-                yield card
+            yield from load(in_file, source=path, make_reader=make_reader)

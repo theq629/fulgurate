@@ -2,15 +2,47 @@
 Flashcard data and core operations.
 """
 
-from typing import Optional
-from pathlib import Path
+from typing import TypeVar, Optional, Generic, overload, cast
 import datetime
 import math
 
-class Card:
+S = TypeVar('S')
+
+_DEFAULT_REPETITIONS = 0
+_DEFAULT_INTERVAL = 1
+_DEFAULT_EASINESS = 2.5
+
+class Card(Generic[S]):
     """
     Flash card.
     """
+
+    @overload
+    def __init__(
+        self: "Card[None]",
+        *,
+        top: str,
+        bottom: str,
+        last_repeat_time: datetime.datetime,
+        repetitions: int = _DEFAULT_REPETITIONS,
+        interval: float = _DEFAULT_INTERVAL,
+        easiness: float = _DEFAULT_EASINESS,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "Card[S]",
+        *,
+        top: str,
+        bottom: str,
+        last_repeat_time: datetime.datetime,
+        source: S,
+        repetitions: int = _DEFAULT_REPETITIONS,
+        interval: float = _DEFAULT_INTERVAL,
+        easiness: float = _DEFAULT_EASINESS,
+    ):
+        ...
 
     def __init__(
         self,
@@ -18,9 +50,10 @@ class Card:
         top: str,
         bottom: str,
         last_repeat_time: datetime.datetime,
-        repetitions: int = 0,
-        interval: float = 1,
-        easiness: float = 2.5,
+        source: Optional[S] = None,
+        repetitions: int = _DEFAULT_REPETITIONS,
+        interval: float = _DEFAULT_INTERVAL,
+        easiness: float = _DEFAULT_EASINESS,
     ):
         self._top = top
         self._bottom = bottom
@@ -28,7 +61,7 @@ class Card:
         self._repetitions = repetitions
         self._interval = interval
         self._easiness = easiness
-        self.path: Optional[Path] = None # Reserved for use by {load,save}_all
+        self._source = cast(S, source)
 
     @property
     def top(self) -> str:
@@ -53,6 +86,10 @@ class Card:
     @property
     def easiness(self) -> float:
         return self._easiness
+
+    @property
+    def source(self) -> S:
+        return self._source
 
     @property
     def is_new(self) -> bool:

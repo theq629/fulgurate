@@ -113,10 +113,8 @@ def test_run_set_batch_size(test_cards_path):
     _assert_bulk_review_called_once_with(bulk_review_mock, batch_size=56, randomize_batch=True)
 
 def test_external_filter():
-    card0 = Card(top="abc", bottom="def", last_repeat_time=_cards_time)
-    card0.path = Path("file0")
-    card1 = Card(top="efg", bottom="hij", last_repeat_time=_cards_time)
-    card1.path = Path("file1")
+    card0 = Card(top="abc", bottom="def", last_repeat_time=_cards_time, source = Path("file0"))
+    card1 = Card(top="efg", bottom="hij", last_repeat_time=_cards_time, source = Path("file1"))
 
     f = _ExternalFilter("rev")
     f.send_card(card0)
