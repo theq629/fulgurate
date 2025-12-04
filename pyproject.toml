@@ -54,3 +54,12 @@ fulgurate-show-schedule = "fulgurate._cmd_line.show_schedule:main"
 
 [tool.setuptools.package-data]
 fulgurate = ["py.typed"]
+
+[dependency-groups]
+dev = [
+    "pytest ~= 8.4",
+    "pytest-cov ~= 7.0",
+    "pylint ~= 3.3",
+    "mypy ~= 1.19",
+    "pip ~= 25.3", # for mypy install-types
+]
