@@ -82,11 +82,11 @@ def make_arg_parser() -> argparse.ArgumentParser:
         dest='csv_dialect',
         type=str,
         choices=[_SNIFF_TSV_DIALECT, _SNIFF_CSV_DIALECT] + csv.list_dialects(),
-        default=_SNIFF_TSV_DIALECT,
-        help="The CSV dialect from Python's csv module to use for reading input cards. If"
-             " {_SNIFF_TSV_DIALECT} then try to auto-detect a TSV dialect; if"
-             " {_SNIFF_CSV_DIALECT} then try to auto-detect a CSV dialect. Defaults to"
-             " {_DEFAULT_CSV_DIALECT}."
+        default=_DEFAULT_CSV_DIALECT,
+        help=f"The CSV dialect from Python's csv module to use for reading input cards. If"
+             f" '{_SNIFF_TSV_DIALECT}' then try to auto-detect a TSV dialect; if"
+             f" '{_SNIFF_CSV_DIALECT}' then try to auto-detect a CSV dialect. Defaults to"
+             f" '{_DEFAULT_CSV_DIALECT}'."
     )
     arg_parser.add_argument(
         '-H',
