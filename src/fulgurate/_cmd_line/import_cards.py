@@ -6,7 +6,8 @@ Takes a tab-separated value file where the columns correspond to the first
 file with the cards at initial state.
 """
 
-from typing import Iterable, Mapping, TextIO
+from typing import Any, Iterable, Mapping, TextIO
+from pathlib import Path
 import sys
 import csv
 import datetime
@@ -47,31 +48,50 @@ def _load_data(
     yield from reader
 
 def _import(
-    in_file: TextIO,
-    out_file: TextIO,
+    in_path: Path,
+    out_path: Path,
     *,
     now: datetime.datetime,
     csv_dialect: type[csv.Dialect],
     read_csv_header: bool,
+    allow_existing: bool,
 ) -> None:
-    data = _load_data(in_file, dialect=csv_dialect, read_header=read_csv_header)
-    cards = (Card(top=row['top'], bottom=row['bottom'], last_repeat_time=now) for row in data)
-    files.save(cards, out_file)
+    def key(card: Card[Any]) -> tuple[str, str]:
+        return (card.top, card.bottom)
+    if out_path.exists():
+        existing = set(key(c) for c in files.load_path_sourced([out_path]))
+    else:
+        existing = set()
+    with open(in_path, encoding='utf-8') as in_file:
+        new_data = _load_data(in_file, dialect=csv_dialect, read_header=read_csv_header)
+        new_cards = (
+            card
+            for row in new_data
+            for card in (Card(
+                top=row['top'],
+                bottom=row['bottom'],
+                last_repeat_time=now,
+                source=in_path,
+            ),)
+            if allow_existing or key(card) not in existing
+        )
+        with open(out_path, 'a', encoding='utf-8') as out_file:
+            files.save(new_cards, out_file)
 
 def make_arg_parser() -> argparse.ArgumentParser:
     arg_parser = argparse.ArgumentParser(description=__doc__.strip())
     arg_parser.add_argument(
-        'input_file',
+        'input_path',
         metavar="INPUT-FILE",
-        type=argparse.FileType('r'),
+        type=Path,
         default=sys.stdin,
         nargs='?',
         help="Path to input cards file.",
     )
     arg_parser.add_argument(
-        'output_file',
+        'output_path',
         metavar="DECK-FILE",
-        type=argparse.FileType('w'),
+        type=Path,
         default=sys.stdout,
         nargs='?',
         help="Path to output deck file.",
@@ -96,6 +116,17 @@ def make_arg_parser() -> argparse.ArgumentParser:
         action='store_false',
         help="Disable reading of a the first input row as a header.",
     )
+    arg_parser.add_argument(
+        '-a',
+        '--allow-existing',
+        dest='allow_existing',
+        default=False,
+        action='store_true',
+        help="""
+            Import a card even if there is already a card with the same top and
+            bottom in the cards file.
+        """
+    )
     _args.add_now(arg_parser)
     return arg_parser
 
@@ -106,11 +137,12 @@ def main() -> None:
     args = make_arg_parser().parse_args()
 
     _import(
-        args.input_file,
-        args.output_file,
+        args.input_path,
+        args.output_path,
         now=args.now,
         csv_dialect=args.csv_dialect,
         read_csv_header=args.read_csv_header,
+        allow_existing=args.allow_existing,
     )
 
 if __name__ == "__main__":

@@ -26,6 +26,10 @@ def _save_raw_cards_csv(rows, out_file):
     for row in rows:
         print(",".join(row), file=out_file)
 
+def _call(args):
+    with patch.object(sys, 'argv', [""] + list(args)):
+        main()
+
 def _minimal_call(args):
     with patch.object(files, 'save') as save_mock, \
          patch.object(sys, 'argv', [""] + list(args)):
@@ -133,3 +137,30 @@ def test_set_read_headers(tmpdir):
     with patch.object(cmd_line_import_cards, '_load_data', Mock(return_value=[])) as load_data_mock:
         _minimal_call([str(_example_path), str(cards_path), "-H"])
     load_data_mock.assert_called_with(ANY, dialect=ANY, read_header=False)
+
+def test_allow_existing(tmpdir):
+    cards_path = str(tmpdir / "cards")
+
+    # Make initial file with modified card data like reviews have been done on it
+    _call([str(_example_path), str(cards_path)])
+    with open(cards_path, 'r', encoding='utf-8') as in_file:
+        text = in_file.read()
+    with open(cards_path, 'w', encoding='utf-8') as out_file:
+        mod_text = text.replace("2.5", "10.0")
+        assert mod_text != text, "need to change something to get a valid test"
+        out_file.write(mod_text)
+    with open(cards_path, 'r', encoding='utf-8') as in_file:
+        orig_lines = tuple(in_file)
+
+    # Importing without allow existing should not change file
+    _call([str(_example_path), str(cards_path)])
+    with open(cards_path, 'r', encoding='utf-8') as in_file:
+        new_lines = tuple(in_file)
+    assert new_lines == orig_lines
+
+    # Importing with allow existing should double the cards
+    _call([str(_example_path), str(cards_path), "-a"])
+    with open(cards_path, 'r', encoding='utf-8') as in_file:
+        new_lines = tuple(in_file)
+    assert new_lines != orig_lines
+    assert len(new_lines) == len(orig_lines) * 2
