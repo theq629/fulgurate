@@ -2,11 +2,12 @@ from pathlib import Path
 import sys
 import io
 import datetime
+import csv
 from unittest.mock import patch, Mock, ANY
 import pytest
 from fulgurate import Card, files, review
 from fulgurate._cmd_line import review as cmd_line_review
-from fulgurate._cmd_line.review import main, _ExternalFilter
+from fulgurate._cmd_line.review import main, _ExternalFilter, _DEFAULT_CSV_DIALECT
 from ._mock_ttyio import mock_ttyio
 from ._shared import FixNowDatetime
 
@@ -33,14 +34,21 @@ def _minimal_call(args, key_inputs=()):
         main()
     return review_cards_mock
 
+class _ExternalFilterMock:
+    def __init__(self, command):
+        self.command = command
+
+    def interact(self, dialect):
+        return (self.command, dialect)
+
 def _minimal_real_call(args, key_inputs=()):
     """Call that does a real review but mocks interaction."""
     with patch.object(cmd_line_review, '_review_card', Mock(return_value=5)) as review_card_mock, \
-         patch.object(cmd_line_review, '_ExternalFilter') as external_filter_mock, \
+         patch.object(cmd_line_review, '_ExternalFilter', _ExternalFilterMock), \
          mock_ttyio(key_inputs), \
          patch.object(sys, 'argv', [""] + list(args)):
         main()
-    return review_card_mock, external_filter_mock
+    return review_card_mock
 
 def _assert_review_cards_called_once_with(mock, *, cards=ANY, now=ANY, review_card=ANY,
                                           max_old=ANY, max_new=ANY, randomize=ANY):
@@ -54,8 +62,10 @@ def _assert_batch_review_called_once_with(mock, *, cards=ANY, now=ANY, batch_siz
                                  review_card=review_card, max_old=max_old, max_new=max_new,
                                  randomize=randomize, randomize_batch=randomize_batch)
 
-def _assert_review_card_called_with(mock, card=ANY, ext_filter=ANY, ext_finish=ANY):
-    mock.assert_called_with(card, ext_filter=ext_filter, ext_finish=ext_finish)
+def _assert_review_card_called_with(mock, card=ANY, ext_filter_interacter=ANY,
+                                    ext_finish_interacter=ANY):
+    mock.assert_called_with(card, ext_filter_interacter=ext_filter_interacter,
+                            ext_finish_interacter=ext_finish_interacter)
 
 def test_review_basic(test_cards_path):
     set_time = _cards_time
@@ -112,23 +122,50 @@ def test_review_set_batch_size(test_cards_path):
         _minimal_call(["-b", "56", str(test_cards_path)])
     _assert_batch_review_called_once_with(batch_review_mock, batch_size=56, randomize_batch=True)
 
-def test_external_filter():
+def test_external_filter(tmp_path):
+    rev_path = Path(tmp_path) / "rev"
+    with open(rev_path, 'w', encoding='utf-8') as out_file:
+        print("import sys", file=out_file)
+        print("for line in sys.stdin:", file=out_file)
+        print("    print(''.join(reversed(line.strip())))", file=out_file)
+    rev_csv_fields_path = Path(tmp_path) / "rev-csv-fields"
+    with open(rev_csv_fields_path, 'w', encoding='utf-8') as out_file:
+        print("import sys", file=out_file)
+        print("for line in sys.stdin:", file=out_file)
+        print("    print(','.join(reversed(line.strip().split(','))))", file=out_file)
+
     card0 = Card(top="abc", bottom="def", last_repeat_time=_cards_time, source = Path("file0"))
     card1 = Card(top="efg", bottom="hij", last_repeat_time=_cards_time, source = Path("file1"))
 
-    f = _ExternalFilter("rev")
-    f.send_card(card0)
-    f.send_card(card1)
+    f = _ExternalFilter(f"{sys.executable} {rev_path}")
+    i = f.interact(csv.excel_tab)
+    i.send_card(card0)
+    i.send_card(card1)
     f.close()
-    assert f.receive() == ("fed", "cba", "0elif")
-    assert f.receive() == ("jih", "gfe", "1elif")
+    assert i.receive() == ("fed", "cba", "0elif")
+    assert i.receive() == ("jih", "gfe", "1elif")
+
+    assert _DEFAULT_CSV_DIALECT != 'excel', "need non-default to check dialect passing"
+    f = _ExternalFilter(f"{sys.executable} {rev_csv_fields_path}")
+    i = f.interact(csv.excel)
+    i.send_card(card0)
+    i.send_card(card1)
+    f.close()
+    assert i.receive() == ("def", "abc", "file0")
+    assert i.receive() == ("hij", "efg", "file1")
 
 def test_review_ext_filter(test_cards_path):
-    review_card_mock, ext_filter_mock = _minimal_real_call(["-f", "abc", str(test_cards_path)])
-    ext_filter_mock.assert_called_once_with("abc")
-    _assert_review_card_called_with(review_card_mock, ext_filter=ext_filter_mock.return_value)
+    assert _DEFAULT_CSV_DIALECT != 'unix', "need non-default to check dialect passing"
+    review_card_mock = _minimal_real_call(["-f", "abc", "-d", "unix", str(test_cards_path)])
+    _assert_review_card_called_with(
+        review_card_mock,
+        ext_filter_interacter=('abc', 'unix'),
+    )
 
 def test_review_ext_finish(test_cards_path):
-    review_card_mock, ext_filter_mock = _minimal_real_call(["-F", "def", str(test_cards_path)])
-    ext_filter_mock.assert_called_once_with("def")
-    _assert_review_card_called_with(review_card_mock, ext_finish=ext_filter_mock.return_value)
+    assert _DEFAULT_CSV_DIALECT != 'unix', "need non-default to check dialect passing"
+    review_card_mock = _minimal_real_call(["-F", "def", "-d", "unix", str(test_cards_path)])
+    _assert_review_card_called_with(
+        review_card_mock,
+        ext_finish_interacter=('def', 'unix'),
+    )
