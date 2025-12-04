@@ -143,6 +143,7 @@ def _review_deck(
     max_old: int,
     max_new: int,
     randomize: bool,
+    randomize_batch: bool,
     batch_size: Optional[int],
     ext_filter: Optional[_ExternalFilter],
     ext_finish: Optional[_ExternalFilter] = None,
@@ -186,7 +187,7 @@ def _review_deck(
                     max_old=max_old,
                     max_new=max_new,
                     randomize=randomize,
-                    randomize_batch=True,
+                    randomize_batch=randomize_batch,
                 )
     except KeyboardInterrupt:
         pass
@@ -228,6 +229,14 @@ def make_arg_parser() -> argparse.ArgumentParser:
         default=False,
         action='store_true',
         help="Randomly order cards to review, from among all input card sets."
+    )
+    arg_parser.add_argument(
+        '-R',
+        '--randomize-batch',
+        dest='randomize_batch',
+        default=False,
+        action='store_true',
+        help="Randomly order cards within each batch, if using batch mode."
     )
     arg_parser.add_argument(
         '-b',
@@ -289,6 +298,7 @@ def main() -> None:
         max_old=args.max_old,
         max_new=args.max_new,
         randomize=args.randomize,
+        randomize_batch=args.randomize_batch,
         batch_size=args.batch_size,
         ext_filter=args.ext_filter,
         ext_finish=args.ext_finish,

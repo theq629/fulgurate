@@ -121,6 +121,11 @@ def test_review_set_randomize(test_cards_path):
 def test_review_set_batch_size(test_cards_path):
     with patch.object(review, 'review_cards_batched') as batch_review_mock:
         _minimal_call(["-b", "56", str(test_cards_path)])
+    _assert_batch_review_called_once_with(batch_review_mock, batch_size=56, randomize_batch=False)
+
+def test_review_set_randomize_batch(test_cards_path):
+    with patch.object(review, 'review_cards_batched') as batch_review_mock:
+        _minimal_call(["-b", "56", "-R", str(test_cards_path)])
     _assert_batch_review_called_once_with(batch_review_mock, batch_size=56, randomize_batch=True)
 
 def test_external_filter(tmp_path):
