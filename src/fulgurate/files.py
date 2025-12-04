@@ -134,7 +134,7 @@ def save_path_sourced(
     cards: Iterable[Card[Path]],
     *,
     make_writer: Optional[MakeWriter] = None,
-    encoding: str = 'utf-8'
+    encoding: str,
 ) -> None:
     """
     Given cards with the source field being a path, save them to their
@@ -153,7 +153,7 @@ def load_path_sourced(
     paths: Iterable[Union[Path, str]],
     *,
     make_reader: Optional[MakeReader] = None,
-    encoding: str = 'utf-8',
+    encoding: str,
 ) -> Iterable[Card[Path]]:
     """
     Load cards from multiple files, setting the source field for each card to

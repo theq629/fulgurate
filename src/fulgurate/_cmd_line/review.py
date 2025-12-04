@@ -148,6 +148,7 @@ def _review_deck(
     ext_filter: Optional[_ExternalFilter],
     ext_finish: Optional[_ExternalFilter] = None,
     filter_csv_dialect: type[csv.Dialect],
+    card_file_encoding: str,
 ) -> None:
     ext_filter_int_ctx = ext_filter.interact(filter_csv_dialect) if ext_filter is not None \
         else nullcontext()
@@ -192,7 +193,7 @@ def _review_deck(
     except KeyboardInterrupt:
         pass
     finally:
-        files.save_path_sourced(deck)
+        files.save_path_sourced(deck, encoding=card_file_encoding)
 
 def make_arg_parser() -> argparse.ArgumentParser:
     filter_input_info = "It should take on stdin a CSV or TSV file, according to the dialect set" \
@@ -208,6 +209,7 @@ def make_arg_parser() -> argparse.ArgumentParser:
         help="Path to input deck file.",
     )
     _args.add_now(arg_parser)
+    _args.add_card_file_encoding(arg_parser)
     arg_parser.add_argument(
         '-O',
         '--max-to-old',
@@ -293,7 +295,7 @@ def main() -> None:
     args = make_arg_parser().parse_args()
 
     _review_deck(
-        deck=tuple(files.load_path_sourced(args.input_paths)),
+        deck=tuple(files.load_path_sourced(args.input_paths, encoding=args.card_file_encoding)),
         now=args.now,
         max_old=args.max_old,
         max_new=args.max_new,
@@ -303,6 +305,7 @@ def main() -> None:
         ext_filter=args.ext_filter,
         ext_finish=args.ext_finish,
         filter_csv_dialect=args.filter_csv_dialect,
+        card_file_encoding=args.card_file_encoding,
     )
 
 if __name__ == "__main__":

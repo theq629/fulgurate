@@ -84,8 +84,8 @@ def test_save_path_sourced_load_path_sourced(tmpdir):
     input_deck[1]._source = Path(cards_path1)
     input_deck[2]._source = Path(cards_path0)
 
-    files.save_path_sourced(input_deck)
-    output_deck = list(files.load_path_sourced([cards_path0, cards_path1]))
+    files.save_path_sourced(input_deck, encoding='utf-8')
+    output_deck = list(files.load_path_sourced([cards_path0, cards_path1], encoding='utf-8'))
 
     output_deck.sort(key=lambda c: c.top)
     _check_decks_equal(input_deck, output_deck)

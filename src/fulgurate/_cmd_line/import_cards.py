@@ -55,14 +55,19 @@ def _import(
     csv_dialect: type[csv.Dialect],
     read_csv_header: bool,
     allow_existing: bool,
+    card_file_encoding: str,
+    input_file_encoding: str,
 ) -> None:
     def key(card: Card[Any]) -> tuple[str, str]:
         return (card.top, card.bottom)
     if out_path.exists():
-        existing = set(key(c) for c in files.load_path_sourced([out_path]))
+        existing = set(
+            key(c)
+            for c in files.load_path_sourced([out_path], encoding=card_file_encoding)
+        )
     else:
         existing = set()
-    with open(in_path, encoding='utf-8') as in_file:
+    with open(in_path, 'r', encoding=input_file_encoding) as in_file:
         new_data = _load_data(in_file, dialect=csv_dialect, read_header=read_csv_header)
         new_cards = (
             card
@@ -75,7 +80,7 @@ def _import(
             ),)
             if allow_existing or key(card) not in existing
         )
-        with open(out_path, 'a', encoding='utf-8') as out_file:
+        with open(out_path, 'a', encoding=card_file_encoding) as out_file:
             files.save(new_cards, out_file)
 
 def make_arg_parser() -> argparse.ArgumentParser:
@@ -96,6 +101,8 @@ def make_arg_parser() -> argparse.ArgumentParser:
         nargs='?',
         help="Path to output deck file.",
     )
+    _args.add_now(arg_parser)
+    _args.add_card_file_encoding(arg_parser)
     arg_parser.add_argument(
         '-d',
         '--dialect',
@@ -127,7 +134,14 @@ def make_arg_parser() -> argparse.ArgumentParser:
             bottom in the cards file.
         """
     )
-    _args.add_now(arg_parser)
+    arg_parser.add_argument(
+        '-E',
+        '--input-encoding',
+        dest='input_file_encoding',
+        type=str,
+        default='utf-8',
+        help="The encoding to use for input files.",
+    )
     return arg_parser
 
 def main() -> None:
@@ -143,6 +157,8 @@ def main() -> None:
         csv_dialect=args.csv_dialect,
         read_csv_header=args.read_csv_header,
         allow_existing=args.allow_existing,
+        card_file_encoding=args.card_file_encoding,
+        input_file_encoding=args.input_file_encoding,
     )
 
 if __name__ == "__main__":

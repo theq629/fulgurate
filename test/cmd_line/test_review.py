@@ -128,6 +128,13 @@ def test_review_set_randomize_batch(test_cards_path):
         _minimal_call(["-b", "56", "-R", str(test_cards_path)])
     _assert_batch_review_called_once_with(batch_review_mock, batch_size=56, randomize_batch=True)
 
+def test_review_set_card_encoding(test_cards_path):
+    with patch.object(files, 'load_path_sourced', Mock(return_value=[])) as load_mock, \
+         patch.object(files, 'save_path_sourced', Mock()) as save_mock:
+        _minimal_call(["-e", "dummyencoding", str(test_cards_path)])
+    load_mock.assert_called_once_with(ANY, encoding="dummyencoding")
+    save_mock.assert_called_once_with(ANY, encoding="dummyencoding")
+
 def test_external_filter(tmp_path):
     rev_path = Path(tmp_path) / "rev"
     with open(rev_path, 'w', encoding='utf-8') as out_file:

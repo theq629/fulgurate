@@ -1,7 +1,8 @@
+import builtins
 import sys
 import os.path
 import datetime
-from unittest.mock import patch, Mock, ANY
+from unittest.mock import patch, Mock, ANY, call
 import pytest
 from fulgurate import files
 from fulgurate._cmd_line import import_cards as cmd_line_import_cards
@@ -137,6 +138,41 @@ def test_set_read_headers(tmpdir):
     with patch.object(cmd_line_import_cards, '_load_data', Mock(return_value=[])) as load_data_mock:
         _minimal_call([str(_example_path), str(cards_path), "-H"])
     load_data_mock.assert_called_with(ANY, dialect=ANY, read_header=False)
+
+def test_review_set_card_encoding(tmpdir):
+    cards_path = str(tmpdir / "cards")
+
+    # Need existing card file for load call
+    _call([str(_example_path), str(cards_path)])
+
+    builtins_open = builtins.open
+    def wrap_open(path, mode='r', **_kwargs):
+        return builtins_open(path, mode, encoding='utf-8')
+
+    with patch.object(files, 'load_path_sourced', Mock(return_value=[])) as load_mock, \
+        patch.object(builtins, 'open', Mock(wraps=wrap_open)) as open_mock:
+        _call([str(_example_path), str(cards_path), "-e", "dummyencoding"])
+    load_mock.assert_called_once_with(ANY, encoding="dummyencoding")
+    open_mock.assert_has_calls([
+        call(ANY, ANY, encoding=ANY),
+        call(ANY, ANY, encoding="dummyencoding"),
+    ])
+
+def test_review_set_input_encoding(tmpdir):
+    cards_path = str(tmpdir / "cards")
+
+    _call([str(_example_path), str(cards_path)])
+
+    builtins_open = builtins.open
+    def wrap_open(path, mode='r', **_kwargs):
+        return builtins_open(path, mode, encoding='utf-8')
+
+    with patch.object(builtins, 'open', Mock(wraps=wrap_open)) as open_mock:
+        _call([str(_example_path), str(cards_path), "-E", "dummyencoding"])
+    open_mock.assert_has_calls([
+        call(ANY, ANY, encoding="dummyencoding"),
+        call(ANY, ANY, encoding=ANY),
+    ])
 
 def test_allow_existing(tmpdir):
     cards_path = str(tmpdir / "cards")
