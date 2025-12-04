@@ -6,7 +6,7 @@ Takes a tab-separated value file where the columns correspond to the first
 file with the cards at initial state.
 """
 
-from typing import Any, Iterable, Mapping, TextIO
+from typing import Iterable, Mapping, TextIO
 from pathlib import Path
 import sys
 import csv
@@ -58,12 +58,12 @@ def _import(
     card_file_encoding: str,
     input_file_encoding: str,
 ) -> None:
-    def key(card: Card[Any]) -> tuple[str, str]:
+    def key(card: Card) -> tuple[str, str]:
         return (card.top, card.bottom)
     if out_path.exists():
         existing = set(
             key(c)
-            for c in files.load_path_sourced([out_path], encoding=card_file_encoding)
+            for c in files.SourcedDeck([out_path], encoding=card_file_encoding)
         )
     else:
         existing = set()
@@ -76,7 +76,6 @@ def _import(
                 top=row['top'],
                 bottom=row['bottom'],
                 last_repeat_time=now,
-                source=in_path,
             ),)
             if allow_existing or key(card) not in existing
         )

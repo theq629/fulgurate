@@ -2,12 +2,9 @@
 Flashcard data and core operations.
 """
 
-from typing import TypeVar, Optional, Generic, overload, cast
 from enum import IntEnum
 import datetime
 import math
-
-S = TypeVar('S')
 
 _DEFAULT_REPETITIONS = 0
 _DEFAULT_INTERVAL = 1
@@ -21,7 +18,7 @@ class RepetitionQuality(IntEnum):
     FOUR = 4
     FIVE = 5
 
-class Card(Generic[S]):
+class Card:
     """
     Flash card.
     """
@@ -33,35 +30,7 @@ class Card(Generic[S]):
         '_repetitions',
         '_interval',
         '_easiness',
-        '_source',
     )
-
-    @overload
-    def __init__(
-        self: "Card[None]",
-        *,
-        top: str,
-        bottom: str,
-        last_repeat_time: datetime.datetime,
-        repetitions: int = _DEFAULT_REPETITIONS,
-        interval: float = _DEFAULT_INTERVAL,
-        easiness: float = _DEFAULT_EASINESS,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self: "Card[S]",
-        *,
-        top: str,
-        bottom: str,
-        last_repeat_time: datetime.datetime,
-        source: S,
-        repetitions: int = _DEFAULT_REPETITIONS,
-        interval: float = _DEFAULT_INTERVAL,
-        easiness: float = _DEFAULT_EASINESS,
-    ):
-        ...
 
     def __init__(
         self,
@@ -69,7 +38,6 @@ class Card(Generic[S]):
         top: str,
         bottom: str,
         last_repeat_time: datetime.datetime,
-        source: Optional[S] = None,
         repetitions: int = _DEFAULT_REPETITIONS,
         interval: float = _DEFAULT_INTERVAL,
         easiness: float = _DEFAULT_EASINESS,
@@ -80,7 +48,6 @@ class Card(Generic[S]):
         self._repetitions = repetitions
         self._interval = interval
         self._easiness = easiness
-        self._source = cast(S, source)
 
     @property
     def top(self) -> str:
@@ -105,10 +72,6 @@ class Card(Generic[S]):
     @property
     def easiness(self) -> float:
         return self._easiness
-
-    @property
-    def source(self) -> S:
-        return self._source
 
     @property
     def is_new(self) -> bool:

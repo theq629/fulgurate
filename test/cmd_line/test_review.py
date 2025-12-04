@@ -35,11 +35,21 @@ def _minimal_call(args, key_inputs=()):
         main()
     return review_cards_mock
 
+class _DummySourcedDeck:
+    def __init__(self, sources):
+        self._sources = sources
+
+    def get_source(self, card):
+        return self._sources[id(card)]
+
+    def save(self, _path, *, _encoding):
+        return
+
 class _ExternalFilterMock:
     def __init__(self, command):
         self.command = command
 
-    def interact(self, dialect):
+    def interact(self, dialect, _deck):
         return nullcontext((self.command, dialect))
 
 def _minimal_real_call(args, key_inputs=()):
@@ -63,9 +73,9 @@ def _assert_batch_review_called_once_with(mock, *, cards=ANY, now=ANY, batch_siz
                                  review_card=review_card, max_old=max_old, max_new=max_new,
                                  randomize=randomize, randomize_batch=randomize_batch)
 
-def _assert_review_card_called_with(mock, card=ANY, ext_filter_interacter=ANY,
+def _assert_review_card_called_with(mock, card=ANY, deck=ANY, ext_filter_interacter=ANY,
                                     ext_finish_interacter=ANY):
-    mock.assert_called_with(card, ext_filter_interacter=ext_filter_interacter,
+    mock.assert_called_with(card, deck=deck, ext_filter_interacter=ext_filter_interacter,
                             ext_finish_interacter=ext_finish_interacter)
 
 def test_review_basic(test_cards_path):
@@ -129,11 +139,12 @@ def test_review_set_randomize_batch(test_cards_path):
     _assert_batch_review_called_once_with(batch_review_mock, batch_size=56, randomize_batch=True)
 
 def test_review_set_card_encoding(test_cards_path):
-    with patch.object(files, 'load_path_sourced', Mock(return_value=[])) as load_mock, \
-         patch.object(files, 'save_path_sourced', Mock()) as save_mock:
+    deck = _DummySourcedDeck({})
+    with patch.object(cmd_line_review, 'SourcedDeck', Mock(return_value=deck)) as load_mock, \
+         patch.object(_DummySourcedDeck, 'save', Mock()) as save_mock:
         _minimal_call(["-e", "dummyencoding", str(test_cards_path)])
     load_mock.assert_called_once_with(ANY, encoding="dummyencoding")
-    save_mock.assert_called_once_with(ANY, encoding="dummyencoding")
+    save_mock.assert_called_once_with(encoding="dummyencoding")
 
 def test_external_filter(tmp_path):
     rev_path = Path(tmp_path) / "rev"
@@ -149,11 +160,15 @@ def test_external_filter(tmp_path):
         print("    print(','.join(reversed(line.strip().split(','))))", file=out_file)
         print("    sys.stdout.flush()", file=out_file)
 
-    card0 = Card(top="abc", bottom="def", last_repeat_time=_cards_time, source = Path("file0"))
-    card1 = Card(top="efg", bottom="hij", last_repeat_time=_cards_time, source = Path("file1"))
+    card0 = Card(top="abc", bottom="def", last_repeat_time=_cards_time)
+    card1 = Card(top="efg", bottom="hij", last_repeat_time=_cards_time)
+    deck = _DummySourcedDeck({
+        id(card0): "file0",
+        id(card1): "file1",
+    })
 
     f = _ExternalFilter(f"{sys.executable} {rev_path}")
-    with f.interact(csv.excel_tab) as i:
+    with f.interact(csv.excel_tab, deck) as i:
         i.send_card(card0)
         i.send_card(card1)
         assert i.receive() == ("fed", "cba", "0elif")
@@ -161,7 +176,7 @@ def test_external_filter(tmp_path):
 
     assert _DEFAULT_CSV_DIALECT != 'excel', "need non-default to check dialect passing"
     f = _ExternalFilter(f"{sys.executable} {rev_csv_fields_path}")
-    with f.interact(csv.excel) as i:
+    with f.interact(csv.excel, deck) as i:
         i.send_card(card0)
         i.send_card(card1)
         assert i.receive() == ("def", "abc", "file0")

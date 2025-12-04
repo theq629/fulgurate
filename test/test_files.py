@@ -68,11 +68,11 @@ def test_load_error(tmpdir):
         with pytest.raises(Exception):
             tuple(files.load(in_file))
 
-def test_save_path_sourced_load_path_sourced(tmpdir):
+def test_sourced_deck(tmpdir):
     cards_path0 = str(tmpdir / "cards0")
     cards_path1 = str(tmpdir / "cards1")
 
-    input_deck = [
+    cards = [
         Card(top="a", bottom="b", last_repeat_time=_time, repetitions=0, interval=1.0,
              easiness=2.5),
         Card(top="c", bottom="d", last_repeat_time=_time, repetitions=1, interval=1.0,
@@ -80,12 +80,16 @@ def test_save_path_sourced_load_path_sourced(tmpdir):
         Card(top="e", bottom="f", last_repeat_time=_time, repetitions=2, interval=6.0,
              easiness=2.22),
     ]
-    input_deck[0]._source = Path(cards_path0)
-    input_deck[1]._source = Path(cards_path1)
-    input_deck[2]._source = Path(cards_path0)
+    input_deck = files.SourcedDeck([], encoding='utf-8')
+    input_deck._cards = tuple(cards)
+    input_deck._sources = {
+        id(cards[0]): Path(cards_path0),
+        id(cards[1]): Path(cards_path1),
+        id(cards[2]): Path(cards_path0),
+    }
 
-    files.save_path_sourced(input_deck, encoding='utf-8')
-    output_deck = list(files.load_path_sourced([cards_path0, cards_path1], encoding='utf-8'))
+    input_deck.save(encoding='utf-8')
+    output_deck = list(files.SourcedDeck([cards_path0, cards_path1], encoding='utf-8'))
 
     output_deck.sort(key=lambda c: c.top)
     _check_decks_equal(input_deck, output_deck)

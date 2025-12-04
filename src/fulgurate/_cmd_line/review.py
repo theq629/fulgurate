@@ -13,7 +13,6 @@ the answer. 0 through 2 are failure responses and 3 through 5 are success.
 """
 
 from typing import Any, Optional, Iterable, NamedTuple
-from pathlib import Path
 import sys
 import os
 import subprocess
@@ -22,10 +21,11 @@ import datetime
 import csv
 import argparse
 from .._card import Card, RepetitionQuality
-from .. import files, review
+from .. import review
+from ..files import SourcedDeck
 from . import _ttyio, _args
 
-def _show_batch(cards: Iterable[Card[Path]]) -> None:
+def _show_batch(cards: Iterable[Card]) -> None:
     _ttyio.clear()
     for i, card in enumerate(cards):
         print(f"{i + 1}: {card.top}\r")
@@ -43,7 +43,7 @@ class _ExternalFilterInteracter:
     """
     Manages interaction with an external filter program.
     """
-    def __init__(self, command: str, csv_dialect: type[csv.Dialect]):
+    def __init__(self, command: str, csv_dialect: type[csv.Dialect], deck: SourcedDeck):
         # pylint: disable=consider-using-with
         self._proc = subprocess.Popen(
             command,
@@ -65,13 +65,18 @@ class _ExternalFilterInteracter:
             fieldnames=_EXTERNAL_FILTER_CSV_FIELDS,
             dialect=csv_dialect,
         )
+        self._deck = deck
 
-    def send_card(self, card: Card[Path]) -> None:
+    def send_card(self, card: Card) -> None:
         """
         Send a card to the external filter program.
         """
         assert self._proc.stdin is not None
-        self._writer.writerow({'source': card.source, 'top': card.top, 'bottom': card.bottom })
+        self._writer.writerow({
+            'source': self._deck.get_source(card),
+            'top': card.top,
+            'bottom': card.bottom,
+        })
         self._proc.stdin.flush()
 
     def receive(self) -> _ExternalFilterRow:
@@ -102,12 +107,13 @@ class _ExternalFilter:
     def __init__(self, command: str) -> None:
         self._command = command
 
-    def interact(self, dialect: type[csv.Dialect]) -> _ExternalFilterInteracter:
-        return _ExternalFilterInteracter(self._command, dialect)
+    def interact(self, dialect: type[csv.Dialect], deck: SourcedDeck) -> _ExternalFilterInteracter:
+        return _ExternalFilterInteracter(self._command, dialect, deck)
 
 def _review_card(
-    card: Card[Path],
+    card: Card,
     *,
+    deck: SourcedDeck,
     clear: bool = True,
     wait: bool = True,
     ext_filter_interacter: Optional[_ExternalFilterInteracter] = None,
@@ -117,7 +123,7 @@ def _review_card(
         _ttyio.clear()
     with _ttyio.Unbuffered(sys.stdin):
         if ext_filter_interacter is None:
-            source, top, bottom = str(card.source), card.top, card.bottom
+            source, top, bottom = str(deck.get_source(card)), card.top, card.bottom
         else:
             ext_filter_interacter.send_card(card)
             source, top, bottom = ext_filter_interacter.receive()
@@ -137,7 +143,7 @@ def _review_card(
                 return RepetitionQuality(int(in_char))
 
 def _review_deck(
-    deck: Iterable[Card[Path]],
+    deck: SourcedDeck,
     *,
     now: datetime.datetime,
     max_old: int,
@@ -150,10 +156,10 @@ def _review_deck(
     filter_csv_dialect: type[csv.Dialect],
     card_file_encoding: str,
 ) -> None:
-    ext_filter_int_ctx = ext_filter.interact(filter_csv_dialect) if ext_filter is not None \
-        else nullcontext()
-    ext_finish_int_ctx = ext_finish.interact(filter_csv_dialect) if ext_finish is not None \
-        else nullcontext()
+    ext_filter_int_ctx = ext_filter.interact(filter_csv_dialect, deck) \
+        if ext_filter is not None else nullcontext()
+    ext_finish_int_ctx = ext_finish.interact(filter_csv_dialect, deck) \
+        if ext_finish is not None else nullcontext()
     try:
         with ext_filter_int_ctx as ext_filter_int, \
              ext_finish_int_ctx as ext_finish_int, \
@@ -165,6 +171,7 @@ def _review_deck(
                     now,
                     lambda *args: _review_card(
                         *args,
+                        deck=deck,
                         ext_filter_interacter=ext_filter_int,
                         ext_finish_interacter=ext_finish_int
                     ),
@@ -180,6 +187,7 @@ def _review_deck(
                     show_batch=_show_batch,
                     review_card=lambda *args: _review_card(
                         *args,
+                        deck=deck,
                         clear=False,
                         wait=False,
                         ext_filter_interacter=ext_filter_int,
@@ -193,7 +201,7 @@ def _review_deck(
     except KeyboardInterrupt:
         pass
     finally:
-        files.save_path_sourced(deck, encoding=card_file_encoding)
+        deck.save(encoding=card_file_encoding)
 
 def make_arg_parser() -> argparse.ArgumentParser:
     filter_input_info = "It should take on stdin a CSV or TSV file, according to the dialect set" \
@@ -295,7 +303,7 @@ def main() -> None:
     args = make_arg_parser().parse_args()
 
     _review_deck(
-        deck=tuple(files.load_path_sourced(args.input_paths, encoding=args.card_file_encoding)),
+        deck=SourcedDeck(args.input_paths, encoding=args.card_file_encoding),
         now=args.now,
         max_old=args.max_old,
         max_new=args.max_new,

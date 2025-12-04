@@ -149,7 +149,7 @@ def test_review_set_card_encoding(tmpdir):
     def wrap_open(path, mode='r', **_kwargs):
         return builtins_open(path, mode, encoding='utf-8')
 
-    with patch.object(files, 'load_path_sourced', Mock(return_value=[])) as load_mock, \
+    with patch.object(files, 'SourcedDeck', Mock(return_value=[])) as load_mock, \
         patch.object(builtins, 'open', Mock(wraps=wrap_open)) as open_mock:
         _call([str(_example_path), str(cards_path), "-e", "dummyencoding"])
     load_mock.assert_called_once_with(ANY, encoding="dummyencoding")

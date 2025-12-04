@@ -2,7 +2,7 @@
 Management of practice cycle for cards.
 """
 
-from typing import TypeVar, Callable, Optional, Iterable, Generic
+from typing import Callable, Optional, Iterable
 import random
 import datetime
 import itertools
@@ -15,14 +15,12 @@ __all__ = (
     'review_cards_batched',
 )
 
-S = TypeVar('S')
+ReviewCard = Callable[[Card], RepetitionQuality]
 
-ReviewCard = Callable[[Card[S]], RepetitionQuality]
-
-class CardFetcher(Generic[S]):
+class CardFetcher:
     def __init__(
         self,
-        cards: Iterable[Card[S]],
+        cards: Iterable[Card],
         now: datetime.datetime,
         *,
         max_old: Optional[int] = None,
@@ -47,7 +45,7 @@ class CardFetcher(Generic[S]):
         if randomize:
             random.shuffle(self._old_cards)
 
-    def choose_next(self) -> Optional[Card[S]]:
+    def choose_next(self) -> Optional[Card]:
         """
         Get the next card to review, or `None` if there are none left to review.
         """
@@ -57,7 +55,7 @@ class CardFetcher(Generic[S]):
             return self._new_cards.pop()
         return None
 
-    def reject_card(self, card: Card[S]) -> None:
+    def reject_card(self, card: Card) -> None:
         """
         Reject card, putting it back for further practice in this review sesion.
         """
@@ -67,9 +65,9 @@ class CardFetcher(Generic[S]):
             self._old_cards.insert(0, card)
 
 def review_cards(
-    cards: Iterable[Card[S]],
+    cards: Iterable[Card],
     now: datetime.datetime,
-    review_card: ReviewCard[S],
+    review_card: ReviewCard,
     *,
     max_old: Optional[int] = None,
     max_new: Optional[int] = None,
@@ -101,12 +99,12 @@ def review_cards(
             fetcher.reject_card(current)
 
 def review_cards_batched(
-    cards: Iterable[Card[S]],
+    cards: Iterable[Card],
     now: datetime.datetime,
     *,
-    review_card: ReviewCard[S],
+    review_card: ReviewCard,
     batch_size: int,
-    show_batch: Callable[[Iterable[Card[S]]], None],
+    show_batch: Callable[[Iterable[Card]], None],
     max_old: Optional[int] = None,
     max_new: Optional[int] = None,
     randomize: bool = False,
@@ -136,7 +134,7 @@ def review_cards_batched(
         randomize=randomize,
     )
 
-    def run_card(card: Card[S]) -> int:
+    def run_card(card: Card) -> int:
         quality = review_card(card)
         card.repeat(quality, now)
         return quality

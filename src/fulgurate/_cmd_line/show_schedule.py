@@ -8,7 +8,7 @@ the second column indicates new cards, while 0 indicates the cards that are
 ready for review.
 """
 
-from typing import TypeVar, Iterable, MutableMapping
+from typing import Iterable, MutableMapping
 import sys
 import collections
 import argparse
@@ -20,11 +20,9 @@ from . import _args
 
 _TIME_FMT = "%Y-%m-%d"
 
-S = TypeVar('S')
-
 _Schedule = Iterable[tuple[datetime.datetime, int, int]]
 
-def _make_schedule(deck: Iterable[Card[S]], now: datetime.datetime) -> _Schedule:
+def _make_schedule(deck: Iterable[Card], now: datetime.datetime) -> _Schedule:
     unseen = 0
     on_day: MutableMapping[datetime.datetime, int] = collections.defaultdict(int)
     for card in deck:
