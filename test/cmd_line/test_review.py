@@ -3,6 +3,7 @@ import sys
 import io
 import datetime
 import csv
+from contextlib import nullcontext
 from unittest.mock import patch, Mock, ANY
 import pytest
 from fulgurate import Card, files, review
@@ -39,7 +40,7 @@ class _ExternalFilterMock:
         self.command = command
 
     def interact(self, dialect):
-        return (self.command, dialect)
+        return nullcontext((self.command, dialect))
 
 def _minimal_real_call(args, key_inputs=()):
     """Call that does a real review but mocks interaction."""
@@ -128,31 +129,31 @@ def test_external_filter(tmp_path):
         print("import sys", file=out_file)
         print("for line in sys.stdin:", file=out_file)
         print("    print(''.join(reversed(line.strip())))", file=out_file)
+        print("    sys.stdout.flush()", file=out_file)
     rev_csv_fields_path = Path(tmp_path) / "rev-csv-fields"
     with open(rev_csv_fields_path, 'w', encoding='utf-8') as out_file:
         print("import sys", file=out_file)
         print("for line in sys.stdin:", file=out_file)
         print("    print(','.join(reversed(line.strip().split(','))))", file=out_file)
+        print("    sys.stdout.flush()", file=out_file)
 
     card0 = Card(top="abc", bottom="def", last_repeat_time=_cards_time, source = Path("file0"))
     card1 = Card(top="efg", bottom="hij", last_repeat_time=_cards_time, source = Path("file1"))
 
     f = _ExternalFilter(f"{sys.executable} {rev_path}")
-    i = f.interact(csv.excel_tab)
-    i.send_card(card0)
-    i.send_card(card1)
-    f.close()
-    assert i.receive() == ("fed", "cba", "0elif")
-    assert i.receive() == ("jih", "gfe", "1elif")
+    with f.interact(csv.excel_tab) as i:
+        i.send_card(card0)
+        i.send_card(card1)
+        assert i.receive() == ("fed", "cba", "0elif")
+        assert i.receive() == ("jih", "gfe", "1elif")
 
     assert _DEFAULT_CSV_DIALECT != 'excel', "need non-default to check dialect passing"
     f = _ExternalFilter(f"{sys.executable} {rev_csv_fields_path}")
-    i = f.interact(csv.excel)
-    i.send_card(card0)
-    i.send_card(card1)
-    f.close()
-    assert i.receive() == ("def", "abc", "file0")
-    assert i.receive() == ("hij", "efg", "file1")
+    with f.interact(csv.excel) as i:
+        i.send_card(card0)
+        i.send_card(card1)
+        assert i.receive() == ("def", "abc", "file0")
+        assert i.receive() == ("hij", "efg", "file1")
 
 def test_review_ext_filter(test_cards_path):
     assert _DEFAULT_CSV_DIALECT != 'unix', "need non-default to check dialect passing"

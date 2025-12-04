@@ -12,11 +12,12 @@ through 5 respectively, indicating your evaluation of how well you remembered
 the answer. 0 through 2 are failure responses and 3 through 5 are success.
 """
 
-from typing import Optional, Iterable, NamedTuple
+from typing import Any, Optional, Iterable, NamedTuple
 from pathlib import Path
 import sys
 import os
 import subprocess
+from contextlib import nullcontext
 import datetime
 import csv
 import argparse
@@ -42,17 +43,25 @@ class _ExternalFilterInteracter:
     """
     Manages interaction with an external filter program.
     """
-    def __init__(self, proc: subprocess.Popen[str], csv_dialect: type[csv.Dialect]):
-        assert proc.stdin is not None
-        assert proc.stdout is not None
-        self._proc = proc
+    def __init__(self, command: str, csv_dialect: type[csv.Dialect]):
+        # pylint: disable=consider-using-with
+        self._proc = subprocess.Popen(
+            command,
+            shell=True,
+            encoding='utf-8',
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        assert self._proc.stdin is not None
+        assert self._proc.stdout is not None
         self._writer = csv.DictWriter(
-            proc.stdin,
+            self._proc.stdin,
             fieldnames=_EXTERNAL_FILTER_CSV_FIELDS,
             dialect=csv_dialect,
         )
         self._reader = csv.DictReader(
-            proc.stdout,
+            self._proc.stdout,
             fieldnames=_EXTERNAL_FILTER_CSV_FIELDS,
             dialect=csv_dialect,
         )
@@ -73,31 +82,28 @@ class _ExternalFilterInteracter:
         row = next(self._reader)
         return _ExternalFilterRow(row['source'], row['top'], row['bottom'])
 
+    def __enter__(self) -> "_ExternalFilterInteracter":
+        return self
+
+    def __exit__(self, _type: Any, _value: Any, _traceback: Any) -> None:
+        self.close()
+
+    def close(self) -> None:
+        assert self._proc.stdin is not None
+        self._proc.stdin.close()
+        os.waitpid(self._proc.pid, 0)
+
 class _ExternalFilter:
     """
     Manages an external filter program.
     """
+    # pylint: disable=too-few-public-methods
+
     def __init__(self, command: str) -> None:
-        # pylint: disable=consider-using-with
-        self._proc = subprocess.Popen(
-            command,
-            shell=True,
-            encoding='utf-8',
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        self._command = command
 
     def interact(self, dialect: type[csv.Dialect]) -> _ExternalFilterInteracter:
-        return _ExternalFilterInteracter(self._proc, dialect)
-
-    def close(self) -> None:
-        """
-        Close the program.
-        """
-        assert self._proc.stdin is not None
-        self._proc.stdin.close()
-        os.waitpid(self._proc.pid, 0)
+        return _ExternalFilterInteracter(self._command, dialect)
 
 def _review_card(
     card: Card[Path],
@@ -142,10 +148,14 @@ def _review_deck(
     ext_finish: Optional[_ExternalFilter] = None,
     filter_csv_dialect: type[csv.Dialect],
 ) -> None:
-    ext_filter_int = ext_filter.interact(filter_csv_dialect) if ext_filter is not None else None
-    ext_finish_int = ext_finish.interact(filter_csv_dialect) if ext_finish is not None else None
+    ext_filter_int_ctx = ext_filter.interact(filter_csv_dialect) if ext_filter is not None \
+        else nullcontext()
+    ext_finish_int_ctx = ext_finish.interact(filter_csv_dialect) if ext_finish is not None \
+        else nullcontext()
     try:
-        with _ttyio.Unbuffered(sys.stdin):
+        with ext_filter_int_ctx as ext_filter_int, \
+             ext_finish_int_ctx as ext_finish_int, \
+             _ttyio.Unbuffered(sys.stdin):
             now = now.replace(hour=0, minute=0, second=0, microsecond=0)
             if batch_size is None:
                 review.review_cards(
@@ -235,7 +245,9 @@ def make_arg_parser() -> argparse.ArgumentParser:
         help=f"""
             Set a command to filter cards. {filter_input_info} It should output
             to stdout new card data in the same format, which will be shown
-            instead of the original card data.
+            instead of the original card data. It should either not buffer
+            output, or flush after each row, since cards will be sent
+            and read one-by-one.
         """
     )
     arg_parser.add_argument(
@@ -245,8 +257,8 @@ def make_arg_parser() -> argparse.ArgumentParser:
         type=_ExternalFilter,
         default=None,
         help=f"""
-            Set a command to execute after a card's second field is shown.
-            {filter_input_info} Its output is ignored.
+            Set a command to send a card to after the card's second field is
+            shown. {filter_input_info} Its output is ignored.
         """
     )
     arg_parser.add_argument(
