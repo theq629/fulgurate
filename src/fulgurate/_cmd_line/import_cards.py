@@ -41,10 +41,10 @@ def _load_data(
 
     reader = csv.DictReader(in_file, fieldnames=field_names, dialect=dialect)
     if read_header:
-        unknown_field_names = set(reader.fieldnames if reader.fieldnames is not None else ()) \
-            - set(_INPUT_FIELD_NAMES)
-        if unknown_field_names:
-            raise ValueError(f"unknown field names in input: {','.join(unknown_field_names)}")
+        missing_field_names = set(_INPUT_FIELD_NAMES) \
+            - set(reader.fieldnames if reader.fieldnames is not None else ())
+        if missing_field_names:
+            raise ValueError(f"missing field names in input: {','.join(missing_field_names)}")
     yield from reader
 
 def _import(

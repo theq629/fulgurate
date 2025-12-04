@@ -71,13 +71,14 @@ def test_load_data_read_header(tmpdir):
         got_data = tuple(_load_data(in_file, dialect='sniff-tsv', read_header=True))
     assert tuple((r['top'], r['bottom']) for r in got_data) == input_data
 
-def test_load_data_read_header_unknown(tmpdir):
+def test_load_data_read_header_missing(tmpdir):
     cards_path = str(tmpdir / "cards")
     with open(cards_path, 'w', encoding='utf-8') as out_file:
         print("top\tx", file=out_file)
+        print("foo\tbar", file=out_file)
 
     with open(cards_path, encoding='utf-8') as in_file:
-        with pytest.raises(ValueError, match=r"unknown.*field name"):
+        with pytest.raises(ValueError, match=r"missing.*field name.*bottom"):
             tuple(_load_data(in_file, dialect='sniff-tsv', read_header=True))
 
 def test_basic(tmpdir):
