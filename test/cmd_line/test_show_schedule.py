@@ -5,11 +5,16 @@ from unittest.mock import patch
 import pytest
 import tabulate
 from fulgurate import Card, files
-from fulgurate._cmd_line.show_schedule import main
+from fulgurate._cmd_line.show_schedule import main, _make_schedule
 from ._shared import FixNowDatetime
 
 _time_fmt = "%Y-%m-%d"
 _cards_time = datetime.datetime(2022, 10, 18)
+
+class _DummyCard:
+    def __init__(self, is_new, next_time):
+        self.is_new = is_new
+        self.next_time = next_time
 
 @pytest.fixture(scope='function')
 def test_cards_path(tmpdir):
@@ -23,6 +28,28 @@ def test_cards_path(tmpdir):
     with open(cards_path, 'w', encoding='utf-8') as out_file:
         files.save(deck, out_file)
     return cards_path
+
+def test_make_schedule():
+    now = datetime.datetime(2022, 10, 18)
+    cards = [
+        _DummyCard(is_new=True, next_time=datetime.datetime(2022, 10, 19)),
+        _DummyCard(is_new=False, next_time=datetime.datetime(2022, 10, 19)),
+        _DummyCard(is_new=True, next_time=datetime.datetime(2022, 10, 18)),
+        _DummyCard(is_new=True, next_time=datetime.datetime(2022, 10, 20)),
+        _DummyCard(is_new=False, next_time=datetime.datetime(2022, 10, 19)),
+        _DummyCard(is_new=False, next_time=datetime.datetime(2022, 10, 20)),
+        _DummyCard(is_new=False, next_time=datetime.datetime(2022, 10, 21)),
+        _DummyCard(is_new=False, next_time=datetime.datetime(2022, 10, 18)),
+        _DummyCard(is_new=False, next_time=datetime.datetime(2022, 10, 19)),
+        _DummyCard(is_new=False, next_time=datetime.datetime(2022, 10, 20)),
+    ]
+    assert list(_make_schedule(cards, now)) == [
+        (now, -1, 3),
+        (datetime.datetime(2022, 10, 18), 0, 1),
+        (datetime.datetime(2022, 10, 19), 1, 3),
+        (datetime.datetime(2022, 10, 20), 2, 2),
+        (datetime.datetime(2022, 10, 21), 3, 1),
+    ]
 
 def test_tabulate(test_cards_path):
     with patch.object(sys, 'argv', ["", str(test_cards_path)]), \
