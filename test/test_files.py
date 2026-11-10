@@ -89,3 +89,16 @@ def test_save_all_load_all(tmpdir):
 
     output_deck.sort(key=lambda c: c.top)
     _check_decks_equal(input_deck, output_deck)
+
+def test_load_error_names_row(tmpdir):
+    tsv_path = str(tmpdir / "cards")
+
+    with open(tsv_path, 'w', encoding='utf-8') as out_file:
+        print("\t".join(["2022-10-18", "1", "1.0", "2.5", "a", "b"]),
+              file=out_file)
+        print("\t".join(["not-a-date", "x", "y", "z", "c", "d"]),
+              file=out_file)
+
+    with open(tsv_path, encoding='utf-8') as in_file:
+        with pytest.raises(ValueError, match="row 2"):
+            tuple(files.load(in_file))
