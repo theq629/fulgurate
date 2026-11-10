@@ -66,15 +66,18 @@ def read_cards(reader: DictReader) -> Iterable[Card]:
     """
     Read cards from a `csv.DictReader`.
     """
-    for row in reader:
-        yield Card(
-            top=row['top'],
-            bottom=row['bottom'],
-            last_repeat_time=datetime.datetime.strptime(row['last repeat time'], _TIME_FMT),
-            repetitions=int(row['repetitions']),
-            interval=float(row['interval']),
-            easiness=float(row['easiness']),
-        )
+    for row_number, row in enumerate(reader, start=1):
+        try:
+            yield Card(
+                top=row['top'],
+                bottom=row['bottom'],
+                last_repeat_time=datetime.datetime.strptime(row['last repeat time'], _TIME_FMT),
+                repetitions=int(row['repetitions']),
+                interval=float(row['interval']),
+                easiness=float(row['easiness']),
+            )
+        except (KeyError, TypeError, ValueError) as e:
+            raise ValueError("Invalid card data on row %d: %s" % (row_number, e))
 
 def save(
     cards: Iterable[Card],
